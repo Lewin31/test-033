@@ -341,6 +341,7 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
+  gameState.inventory.push(item);
 }
 
 const tradeUtils = {
