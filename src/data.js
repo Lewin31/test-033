@@ -42,7 +42,19 @@ function priceByRarity(base, rarity) {
   return Math.round(base * multipliers[rarity]);
 }
 
-function clothingIconForSlot(slot, index) {
+function clothingIconForType(type, slot, index) {
+  const normalizedType = String(type || '').toLowerCase();
+  if (normalizedType.includes('кеп')) return '🧢';
+  if (normalizedType.includes('пальто')) return '🧥';
+  if (normalizedType.includes('курт')) return '🧥';
+  if (normalizedType.includes('худи')) return '👕';
+  if (normalizedType.includes('футбол')) return '👕';
+  if (normalizedType.includes('рубаш')) return '👔';
+  if (normalizedType.includes('джинс')) return '👖';
+  if (normalizedType.includes('кроссов')) return '👟';
+  if (normalizedType.includes('ботин')) return '🥾';
+  if (normalizedType.includes('час')) return '⌚';
+
   const icons = clothingSlotIcons[slot];
   return icons[index % icons.length];
 }
@@ -56,7 +68,7 @@ export const clothingCatalog = Array.from({ length: 100 }, (_, index) => {
   return {
     id: `cloth-${index + 1}`,
     category: 'clothing',
-    icon: clothingIconForSlot(slot, index),
+    icon: clothingIconForType(type, slot, index),
     name: `${prefix} ${type} ${index + 1}`,
     rarity,
     price: priceByRarity(1200 + index * 55, rarity),

@@ -418,6 +418,43 @@ function renderSocialWindow(state) {
 }
 
 
+
+function caseOpeningModal(state) {
+  if (!state.caseOpening.open) return '';
+
+  return `
+    <div class="modal visible case-opening-modal">
+      <div class="modal__content case-opening-modal__content">
+        <div class="modal__header">
+          <div>
+            <p class="section-label">Кейс</p>
+            <h3>Прокрутка дропа</h3>
+          </div>
+          <button class="icon-button" data-action="case-close-modal">✕</button>
+        </div>
+        <div class="case-roulette">
+          <div class="case-roulette__pointer"></div>
+          <div class="case-roulette__viewport">
+            <div class="case-roulette__track" style="transform: translateX(-${state.caseOpening.offset}px)">
+              ${state.caseOpening.strip.map((item) => `
+                <div class="case-roulette__card rarity-${item.rarity}">
+                  <span class="gear-icon">${item.icon}</span>
+                  <strong>${item.name}</strong>
+                  ${rarityBadge(item.rarity)}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="case-opening-result ${state.caseOpening.reveal ? 'visible' : ''}">
+          <p class="section-label">Выбито</p>
+          ${state.caseOpening.reward ? collectionTile(state.caseOpening.reward) : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function friendModal(state) {
   if (!state.friendModal.open || !state.friendModal.friend) return '';
 
@@ -704,6 +741,7 @@ export function renderApp(root, state) {
       ${friendModal(state)}
       ${tradeModal(state)}
       ${tradePickerModal(state)}
+      ${caseOpeningModal(state)}
 
       <div class="modal ${state.showStats ? 'visible' : ''}">
         <div class="modal__content">

@@ -62,6 +62,14 @@ const defaultState = {
     gameState: null,
     messages: []
   },
+  caseOpening: {
+    open: false,
+    caseId: '',
+    reward: null,
+    strip: [],
+    offset: 0,
+    reveal: false
+  },
   tradePicker: {
     slotIndex: null
   },
@@ -102,6 +110,7 @@ function normalizeSavedState(saved = {}) {
     socialSection: null,
     tradeModalOpen: false,
     friendModal: structuredClone(defaultState).friendModal,
+    caseOpening: structuredClone(defaultState).caseOpening,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: structuredClone(defaultState).online,
     social: structuredClone(defaultState).social,
@@ -126,6 +135,7 @@ export function saveState(state) {
     socialSection: null,
     tradeModalOpen: false,
     friendModal: structuredClone(defaultState).friendModal,
+    caseOpening: structuredClone(defaultState).caseOpening,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: undefined,
     social: undefined,
@@ -228,11 +238,26 @@ export function openCase(state, caseId) {
     return null;
   }
 
-  const rewards = getCaseRewards(caseId);
+  const rewards = getCaseRewards(caseId).map((item) => normalizeItem(item));
   if (!rewards.length) return null;
+
   const reward = normalizeItem(rewards[Math.floor(Math.random() * rewards.length)]);
+  const strip = Array.from({ length: 28 }, (_, index) => {
+    if (index === 22) return reward;
+    const sample = rewards[Math.floor(Math.random() * rewards.length)];
+    return normalizeItem(sample);
+  });
+
   state.money -= caseItem.price;
   state.ownedCars.unshift(reward);
+  state.caseOpening = {
+    open: true,
+    caseId,
+    reward,
+    strip,
+    offset: 0,
+    reveal: false
+  };
   addNotification(state, `${caseItem.name}: тебе выпала ${reward.name}.`);
   return reward;
 }
@@ -309,6 +334,7 @@ export function resetSocialState(state) {
   state.social = structuredClone(defaultState).social;
   state.tradeModalOpen = false;
   state.friendModal = structuredClone(defaultState).friendModal;
+  state.caseOpening = structuredClone(defaultState).caseOpening;
   state.tradePicker = structuredClone(defaultState).tradePicker;
   state.online.chatMessages = [];
 }
@@ -374,4 +400,16 @@ export function setFriendMessages(state, messages) {
 
 export function appendFriendMessage(state, message) {
   state.friendModal.messages = [...state.friendModal.messages, message].slice(-80);
+}
+
+
+export function updateCaseOpening(state, patch) {
+  state.caseOpening = {
+    ...state.caseOpening,
+    ...patch
+  };
+}
+
+export function closeCaseOpening(state) {
+  state.caseOpening = structuredClone(defaultState).caseOpening;
 }

@@ -24,7 +24,9 @@ import {
   closeFriendModal,
   setFriendModalMode,
   setFriendMessages,
-  appendFriendMessage
+  appendFriendMessage,
+  updateCaseOpening,
+  closeCaseOpening
 } from './state.js';
 
 const state = loadState();
@@ -75,6 +77,24 @@ function applyServerPayload(payload) {
       closeTradePicker(state);
     }
   }
+}
+
+
+function animateCaseOpening() {
+  const rewardIndex = 22;
+  const cardWidth = 172;
+  const viewportCenterOffset = 320;
+  const targetOffset = rewardIndex * cardWidth - viewportCenterOffset;
+
+  requestAnimationFrame(() => {
+    updateCaseOpening(state, { offset: targetOffset });
+    render();
+  });
+
+  setTimeout(() => {
+    updateCaseOpening(state, { reveal: true });
+    render();
+  }, 4200);
 }
 
 async function syncGameState() {
@@ -197,6 +217,7 @@ root.addEventListener('click', async (event) => {
     if (action === 'close-social') state.socialSection = null;
     if (action === 'friend-modal-close') closeFriendModal(state);
     if (action === 'friend-modal-mode') setFriendModalMode(state, button.dataset.mode);
+    if (action === 'case-close-modal') closeCaseOpening(state);
     if (action === 'work') {
       performWork(state);
       shouldSyncGame = true;
@@ -209,7 +230,12 @@ root.addEventListener('click', async (event) => {
       shouldSyncGame = buyItem(state, button.dataset.id, button.dataset.category) || shouldSyncGame;
     }
     if (action === 'open-case') {
-      shouldSyncGame = Boolean(openCase(state, button.dataset.id)) || shouldSyncGame;
+      const reward = openCase(state, button.dataset.id);
+      if (reward) {
+        shouldSyncGame = true;
+        render();
+        animateCaseOpening();
+      }
     }
     if (action === 'equip') {
       shouldSyncGame = equipItem(state, button.dataset.id) || shouldSyncGame;
