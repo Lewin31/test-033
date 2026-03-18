@@ -296,22 +296,22 @@ h1 { margin-bottom: 0; font-size: 28px; }
 .character-frame {
   min-height: 0;
   display: grid;
-  gap: 16px;
+  gap: 12px;
   grid-template-rows: auto 1fr;
 }
 .character-avatar {
   min-height: 118px;
   display: grid;
   place-items: center;
-  border-radius: 24px;
+  border-radius: 22px;
   background: radial-gradient(circle at top, rgba(111, 107, 255, 0.35), rgba(255,255,255,0.03));
   border: 1px solid rgba(111, 107, 255, 0.2);
   font-size: 72px;
 }
 .equip-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  grid-template-columns: 1fr;
 }
 .equip-slot-card {
   min-height: 92px;

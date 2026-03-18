@@ -341,6 +341,20 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
+
+  const fromItems = fromSelections.map((item) => findTradeableItem(fromGame, item.instanceId));
+  const toItems = toSelections.map((item) => findTradeableItem(toGame, item.instanceId));
+  if (fromItems.some((entry) => !entry) || toItems.some((entry) => !entry)) {
+    throw new Error('Один из предметов для обмена больше недоступен.');
+  }
+
+  const transferredFrom = fromSelections.map((item) => removeTradeableItem(fromGame, item.instanceId));
+  const transferredTo = toSelections.map((item) => removeTradeableItem(toGame, item.instanceId));
+  transferredFrom.forEach((item) => addTradeableItem(toGame, item));
+  transferredTo.forEach((item) => addTradeableItem(fromGame, item));
+
+  trade.status = 'completed';
+  trade.updatedAt = new Date().toISOString();
 }
 
 function hasOpenTrade(userId) {
