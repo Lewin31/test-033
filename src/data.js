@@ -42,7 +42,19 @@ function priceByRarity(base, rarity) {
   return Math.round(base * multipliers[rarity]);
 }
 
-function clothingIconForSlot(slot, index) {
+function clothingIconForType(type, slot, index) {
+  const normalizedType = String(type || '').toLowerCase();
+  if (normalizedType.includes('кеп')) return '🧢';
+  if (normalizedType.includes('пальто')) return '🧥';
+  if (normalizedType.includes('курт')) return '🧥';
+  if (normalizedType.includes('худи')) return '👕';
+  if (normalizedType.includes('футбол')) return '👕';
+  if (normalizedType.includes('рубаш')) return '👔';
+  if (normalizedType.includes('джинс')) return '👖';
+  if (normalizedType.includes('кроссов')) return '👟';
+  if (normalizedType.includes('ботин')) return '🥾';
+  if (normalizedType.includes('час')) return '⌚';
+
   const icons = clothingSlotIcons[slot];
   return icons[index % icons.length];
 }
@@ -56,7 +68,7 @@ export const clothingCatalog = Array.from({ length: 100 }, (_, index) => {
   return {
     id: `cloth-${index + 1}`,
     category: 'clothing',
-    icon: clothingIconForSlot(slot, index),
+    icon: clothingIconForType(type, slot, index),
     name: `${prefix} ${type} ${index + 1}`,
     rarity,
     price: priceByRarity(1200 + index * 55, rarity),
@@ -119,4 +131,46 @@ export function getRandomItems(category, count) {
   }
 
   return result;
+}
+
+
+const caseThemes = [
+  ['turbo', 'Турбо-кейс', '🏁'],
+  ['street', 'Street-кейс', '🛞'],
+  ['track', 'Трек-кейс', '🏎️'],
+  ['retro', 'Ретро-кейс', '📼'],
+  ['drift', 'Дрифт-кейс', '💨'],
+  ['muscle', 'Muscle-кейс', '💪'],
+  ['import', 'Import-кейс', '🌃'],
+  ['night', 'Ночной кейс', '🌙'],
+  ['garage', 'Гаражный кейс', '🧰'],
+  ['chrome', 'Chrome-кейс', '✨'],
+  ['legend', 'Legend-кейс', '👑'],
+  ['sport', 'Sport-кейс', '⚡'],
+  ['premium', 'Premium-кейс', '💎'],
+  ['nitro', 'Nitro-кейс', '🔥'],
+  ['rally', 'Rally-кейс', '🗺️'],
+  ['monster', 'Monster-кейс', '🦾'],
+  ['midnight', 'Midnight-кейс', '🌌'],
+  ['urban', 'Urban-кейс', '🏙️'],
+  ['velocity', 'Velocity-кейс', '🚀'],
+  ['diamond', 'Diamond-кейс', '💠']
+];
+
+export const caseCatalog = caseThemes.map(([id, name, icon], index) => ({
+  id: `case-${id}`,
+  icon,
+  name,
+  rarity: index > 16 ? 'mythic' : index > 12 ? 'epic' : index > 7 ? 'rare' : index > 3 ? 'uncommon' : 'common',
+  price: 4500 + index * 2200,
+  rewardCount: 4 + (index % 4),
+  description: `Автомобильный кейс с ${4 + (index % 4)} возможными машинами.`
+}));
+
+export function getCaseRewards(caseId) {
+  const index = caseCatalog.findIndex((entry) => entry.id === caseId);
+  if (index === -1) return [];
+
+  const start = (index * 2) % Math.max(1, carCatalog.length - 8);
+  return carCatalog.slice(start, start + 8);
 }
