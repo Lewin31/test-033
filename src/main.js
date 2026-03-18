@@ -47,6 +47,8 @@ async function api(path, { method = 'GET', body } = {}) {
 }
 
 function applyServerPayload(payload) {
+  const previousActiveTradeId = state.social.activeTrade?.id || '';
+
   if (payload.gameState) {
     applyGameState(state, payload.gameState);
   }
@@ -57,6 +59,15 @@ function applyServerPayload(payload) {
       onlineCount: payload.social.onlineCount,
       chatMessages: payload.social.chatMessages
     });
+
+    const nextActiveTradeId = payload.social.activeTrade?.id || '';
+    if (nextActiveTradeId && nextActiveTradeId !== previousActiveTradeId) {
+      state.tradeModalOpen = true;
+    }
+    if (!nextActiveTradeId) {
+      state.tradeModalOpen = false;
+      closeTradePicker(state);
+    }
   }
 }
 
@@ -220,7 +231,16 @@ root.addEventListener('click', async (event) => {
       applyServerPayload(payload);
       state.socialSection = 'trade';
     }
+    if (action === 'trade-open-modal') {
+      state.tradeModalOpen = true;
+      state.socialSection = 'trade';
+    }
+    if (action === 'trade-close-modal') {
+      state.tradeModalOpen = false;
+      closeTradePicker(state);
+    }
     if (action === 'trade-open-slot') {
+      state.tradeModalOpen = true;
       openTradePicker(state, Number(button.dataset.slot));
     }
     if (action === 'trade-close-picker') {

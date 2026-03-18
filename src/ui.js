@@ -204,14 +204,17 @@ function tradeBoard(state) {
   if (!trade) return '';
 
   return `
-    <div class="trade-board panel-inner">
+    <div class="trade-board trade-modal-board">
       <div class="social-window__header">
         <div>
           <p class="section-label">🤝 Активный трейд</p>
           <h3>${trade.partner.username}</h3>
           <p class="trade-board__status">Твои слоты слева, слоты друга справа. После выбора оба подтверждают сделку.</p>
         </div>
-        <button class="secondary-button" data-action="trade-cancel">Отменить обмен</button>
+        <div class="action-row">
+          <button class="secondary-button" data-action="trade-close-modal">Свернуть</button>
+          <button class="secondary-button" data-action="trade-cancel">Отменить обмен</button>
+        </div>
       </div>
       <div class="trade-status-row">
         <div class="trade-status-chip ${trade.ownConfirmed ? 'ready' : ''}">Ты: ${trade.ownConfirmed ? 'подтвердил' : 'ожидает подтверждения'}</div>
@@ -236,6 +239,22 @@ function tradeBoard(state) {
         <button class="primary-button" data-action="trade-confirm" ${trade.ownSlots.every((item) => !item) ? 'disabled' : ''}>Подтвердить сделку</button>
         <span class="trade-board__note">Если кто-то меняет слот, подтверждения сбрасываются автоматически.</span>
       </div>
+    </div>
+  `;
+}
+
+function activeTradeSummary(state) {
+  const trade = state.social.activeTrade;
+  if (!trade) return '';
+
+  return `
+    <div class="social-card trade-active-card">
+      <div>
+        <p class="section-label">Активный трейд</p>
+        <strong>${trade.partner.username}</strong>
+        <span>Обмен открыт в отдельном окне поверх интерфейса.</span>
+      </div>
+      <button data-action="trade-open-modal">Открыть окно обмена</button>
     </div>
   `;
 }
@@ -288,34 +307,44 @@ function tradesWindow(state) {
         </div>
         <button class="secondary-button" data-action="close-social">Закрыть</button>
       </div>
-      ${state.social.activeTrade ? tradeBoard(state) : `
-        <div class="social-columns trade-requests-columns">
-          <div class="social-list">
-            <p class="section-label">Входящие запросы</p>
-            ${state.social.incomingTradeRequests.length
-              ? state.social.incomingTradeRequests.map((request) => tradeRequestCard(request, true)).join('')
-              : '<div class="empty-state">Нет входящих запросов на обмен.</div>'}
-          </div>
-          <div class="social-list">
-            <p class="section-label">Исходящие запросы</p>
-            ${state.social.outgoingTradeRequests.length
-              ? state.social.outgoingTradeRequests.map((request) => tradeRequestCard(request, false)).join('')
-              : '<div class="empty-state">Нет исходящих запросов на обмен.</div>'}
-          </div>
-          <div class="social-list">
-            <p class="section-label">История</p>
-            ${state.social.tradeHistory.length
-              ? state.social.tradeHistory.map((trade) => `
-                <div class="social-card">
-                  <strong>${trade.partner.username}</strong>
-                  <span>Статус: ${trade.statusLabel}</span>
-                </div>
-              `).join('')
-              : '<div class="empty-state">История обменов пуста.</div>'}
-          </div>
+      ${activeTradeSummary(state)}
+      <div class="social-columns trade-requests-columns">
+        <div class="social-list">
+          <p class="section-label">Входящие запросы</p>
+          ${state.social.incomingTradeRequests.length
+            ? state.social.incomingTradeRequests.map((request) => tradeRequestCard(request, true)).join('')
+            : '<div class="empty-state">Нет входящих запросов на обмен.</div>'}
         </div>
-      `}
-      ${tradePickerModal(state)}
+        <div class="social-list">
+          <p class="section-label">Исходящие запросы</p>
+          ${state.social.outgoingTradeRequests.length
+            ? state.social.outgoingTradeRequests.map((request) => tradeRequestCard(request, false)).join('')
+            : '<div class="empty-state">Нет исходящих запросов на обмен.</div>'}
+        </div>
+        <div class="social-list">
+          <p class="section-label">История</p>
+          ${state.social.tradeHistory.length
+            ? state.social.tradeHistory.map((trade) => `
+              <div class="social-card">
+                <strong>${trade.partner.username}</strong>
+                <span>Статус: ${trade.statusLabel}</span>
+              </div>
+            `).join('')
+            : '<div class="empty-state">История обменов пуста.</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function tradeModal(state) {
+  if (!state.social.activeTrade || !state.tradeModalOpen) return '';
+
+  return `
+    <div class="modal visible trade-session-modal">
+      <div class="modal__content trade-session-modal__content">
+        ${tradeBoard(state)}
+      </div>
     </div>
   `;
 }
@@ -536,6 +565,8 @@ export function renderApp(root, state) {
       </main>
 
       ${authOverlay(state)}
+      ${tradeModal(state)}
+      ${tradePickerModal(state)}
 
       <div class="modal ${state.showStats ? 'visible' : ''}">
         <div class="modal__content">

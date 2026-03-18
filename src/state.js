@@ -54,6 +54,7 @@ const defaultState = {
   activeTab: 'shop',
   shopCategory: null,
   socialSection: null,
+  tradeModalOpen: false,
   tradePicker: {
     slotIndex: null
   },
@@ -92,6 +93,7 @@ function normalizeSavedState(saved = {}) {
     ...saved,
     ...extractGameState({ ...structuredClone(defaultState), ...saved }),
     socialSection: null,
+    tradeModalOpen: false,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: structuredClone(defaultState).online,
     social: structuredClone(defaultState).social,
@@ -114,6 +116,7 @@ export function saveState(state) {
   const persistedState = {
     ...state,
     socialSection: null,
+    tradeModalOpen: false,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: undefined,
     social: undefined,
@@ -274,6 +277,7 @@ export function setSocialData(state, socialPatch) {
 
 export function resetSocialState(state) {
   state.social = structuredClone(defaultState).social;
+  state.tradeModalOpen = false;
   state.tradePicker = structuredClone(defaultState).tradePicker;
   state.online.chatMessages = [];
 }

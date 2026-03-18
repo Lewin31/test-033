@@ -581,6 +581,29 @@ h1 { margin-bottom: 0; font-size: 28px; }
   cursor: not-allowed;
 }
 
+
+.trade-active-card {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.trade-modal-board {
+  background: transparent;
+  padding: 0;
+}
+
+.trade-session-modal {
+  z-index: 11;
+  background: rgba(5, 8, 13, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.trade-session-modal__content {
+  width: min(1180px, 96vw);
+  max-height: 88vh;
+  padding: 28px;
+}
+
 .trade-window-layout {
   grid-template-rows: auto 1fr;
 }
@@ -690,6 +713,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
 
 .trade-picker-modal {
   z-index: 12;
+  background: rgba(5, 8, 13, 0.72);
 }
 
 .trade-picker-modal__content {
@@ -727,6 +751,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
 }
 
 @media (max-width: 1300px) {
+  .trade-active-card,
   .trade-requests-columns,
   .trade-status-row,
   .trade-board__shell,
