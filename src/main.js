@@ -24,6 +24,7 @@ import {
 const state = loadState();
 const root = document.getElementById('app');
 let events;
+let lastShopSecondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
 
 function render() {
   renderApp(root, state);
@@ -308,8 +309,14 @@ root.addEventListener('submit', async (event) => {
 });
 
 setInterval(() => {
+  if (!state.auth.user) return;
+
   const changed = ensureFreshShop(state);
-  if (state.activeTab === 'shop' || changed) render();
+  const secondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
+  const shouldRenderShopTimer = state.activeTab === 'shop' && secondsLeft !== lastShopSecondsLeft;
+
+  lastShopSecondsLeft = secondsLeft;
+  if (changed || shouldRenderShopTimer) render();
 }, 1000);
 
 window.addEventListener('beforeunload', () => {
