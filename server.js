@@ -341,26 +341,6 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
-  return null;
-}
-
-function takeTradeableItem(gameState, instanceId) {
-  const found = findTradeableItem(gameState, instanceId);
-  if (!found) return null;
-  const [removed] = gameState[found.collectionName].splice(found.index, 1);
-  return removed;
-}
-
-function addTradeableItem(gameState, item) {
-  if (!item) return;
-  if (item.category === 'cars') {
-    gameState.ownedCars.push(item);
-    return;
-  }
-  if (item.category === 'property') {
-    gameState.ownedProperty.push(item);
-    return;
-  }
   gameState.inventory.push(item);
 }
 
@@ -402,87 +382,89 @@ function executeTrade(trade) {
   trade.updatedAt = new Date().toISOString();
 }
 
-function userHasOpenTrade(userId) {
-  return db.trades.some((trade) => (trade.fromUserId === userId || trade.toUserId === userId) && ['pending', 'active'].includes(trade.status));
-}
+const tradeUtils = {
+  hasOpenTrade(userId) {
+    return db.trades.some((trade) => (trade.fromUserId === userId || trade.toUserId === userId) && ['pending', 'active'].includes(trade.status));
+  },
 
-function findTrade(tradeId, userId, statuses = ['pending', 'active']) {
-  return db.trades.find((trade) => trade.id === tradeId && (trade.fromUserId === userId || trade.toUserId === userId) && statuses.includes(trade.status));
-}
+  findTrade(tradeId, userId, statuses = ['pending', 'active']) {
+    return db.trades.find((trade) => trade.id === tradeId && (trade.fromUserId === userId || trade.toUserId === userId) && statuses.includes(trade.status));
+  },
 
-function getTradeableCollections(gameState) {
-  return [
-    ['inventory', gameState.inventory],
-    ['ownedCars', gameState.ownedCars],
-    ['ownedProperty', gameState.ownedProperty]
-  ];
-}
+  getCollections(gameState) {
+    return [
+      ['inventory', gameState.inventory],
+      ['ownedCars', gameState.ownedCars],
+      ['ownedProperty', gameState.ownedProperty]
+    ];
+  },
 
-function findTradeableItem(gameState, instanceId) {
-  for (const [collectionName, collection] of getTradeableCollections(gameState)) {
-    const index = collection.findIndex((item) => item.instanceId === instanceId);
-    if (index !== -1) return { collectionName, index, item: collection[index] };
+  findItem(gameState, instanceId) {
+    for (const [collectionName, collection] of tradeUtils.getCollections(gameState)) {
+      const index = collection.findIndex((item) => item.instanceId === instanceId);
+      if (index !== -1) return { collectionName, index, item: collection[index] };
+    }
+    return null;
+  },
+
+  takeItem(gameState, instanceId) {
+    const found = tradeUtils.findItem(gameState, instanceId);
+    if (!found) return null;
+    const [removed] = gameState[found.collectionName].splice(found.index, 1);
+    return removed;
+  },
+
+  addItem(gameState, item) {
+    if (!item) return;
+    if (item.category === 'cars') {
+      gameState.ownedCars.push(item);
+      return;
+    }
+    if (item.category === 'property') {
+      gameState.ownedProperty.push(item);
+      return;
+    }
+    gameState.inventory.push(item);
+  },
+
+  clearConfirmations(trade) {
+    trade.confirmed = {
+      [trade.fromUserId]: false,
+      [trade.toUserId]: false
+    };
+  },
+
+  execute(trade) {
+    const fromUser = db.users.find((user) => user.id === trade.fromUserId);
+    const toUser = db.users.find((user) => user.id === trade.toUserId);
+    if (!fromUser || !toUser) throw new Error('Участники обмена не найдены.');
+
+    const fromGame = ensureUserGameState(fromUser);
+    const toGame = ensureUserGameState(toUser);
+    const fromSelections = (trade.slots?.[trade.fromUserId] || []).filter(Boolean);
+    const toSelections = (trade.slots?.[trade.toUserId] || []).filter(Boolean);
+
+    const fromIds = new Set(fromSelections.map((item) => item.instanceId));
+    const toIds = new Set(toSelections.map((item) => item.instanceId));
+    if (fromIds.size !== fromSelections.length || toIds.size !== toSelections.length) {
+      throw new Error('В трейде обнаружены повторяющиеся предметы.');
+    }
+
+    const fromItems = fromSelections.map((item) => tradeUtils.findItem(fromGame, item.instanceId));
+    const toItems = toSelections.map((item) => tradeUtils.findItem(toGame, item.instanceId));
+    if (fromItems.some((entry) => !entry) || toItems.some((entry) => !entry)) {
+      throw new Error('Один из предметов для обмена больше недоступен.');
+    }
+
+    const transferredFrom = fromSelections.map((item) => tradeUtils.takeItem(fromGame, item.instanceId));
+    const transferredTo = toSelections.map((item) => tradeUtils.takeItem(toGame, item.instanceId));
+    transferredFrom.forEach((item) => tradeUtils.addItem(toGame, item));
+    transferredTo.forEach((item) => tradeUtils.addItem(fromGame, item));
+
+    trade.status = 'completed';
+    trade.updatedAt = new Date().toISOString();
   }
-  return null;
-}
-
-function takeTradeableItem(gameState, instanceId) {
-  const found = findTradeableItem(gameState, instanceId);
-  if (!found) return null;
-  const [removed] = gameState[found.collectionName].splice(found.index, 1);
-  return removed;
-}
-
-function addTradeableItem(gameState, item) {
-  if (!item) return;
-  if (item.category === 'cars') {
-    gameState.ownedCars.push(item);
-    return;
-  }
-  if (item.category === 'property') {
-    gameState.ownedProperty.push(item);
-    return;
-  }
-  gameState.inventory.push(item);
-}
-
-function clearTradeConfirmations(trade) {
-  trade.confirmed = {
-    [trade.fromUserId]: false,
-    [trade.toUserId]: false
-  };
-}
-
-function executeTrade(trade) {
-  const fromUser = db.users.find((user) => user.id === trade.fromUserId);
-  const toUser = db.users.find((user) => user.id === trade.toUserId);
-  if (!fromUser || !toUser) throw new Error('Участники обмена не найдены.');
-
-  const fromGame = ensureUserGameState(fromUser);
-  const toGame = ensureUserGameState(toUser);
-  const fromSelections = (trade.slots?.[trade.fromUserId] || []).filter(Boolean);
-  const toSelections = (trade.slots?.[trade.toUserId] || []).filter(Boolean);
-
-  const fromIds = new Set(fromSelections.map((item) => item.instanceId));
-  const toIds = new Set(toSelections.map((item) => item.instanceId));
-  if (fromIds.size !== fromSelections.length || toIds.size !== toSelections.length) {
-    throw new Error('В трейде обнаружены повторяющиеся предметы.');
-  }
-
-  const fromItems = fromSelections.map((item) => findTradeableItem(fromGame, item.instanceId));
-  const toItems = toSelections.map((item) => findTradeableItem(toGame, item.instanceId));
-  if (fromItems.some((entry) => !entry) || toItems.some((entry) => !entry)) {
-    throw new Error('Один из предметов для обмена больше недоступен.');
-  }
-
-  const transferredFrom = fromSelections.map((item) => takeTradeableItem(fromGame, item.instanceId));
-  const transferredTo = toSelections.map((item) => takeTradeableItem(toGame, item.instanceId));
-  transferredFrom.forEach((item) => addTradeableItem(toGame, item));
-  transferredTo.forEach((item) => addTradeableItem(fromGame, item));
-
-  trade.status = 'completed';
-  trade.updatedAt = new Date().toISOString();
-}
+};
 
 async function handleApi(req, res, pathname) {
   if (req.method === 'GET' && pathname === '/api/auth/session') {
@@ -694,7 +676,7 @@ async function handleApi(req, res, pathname) {
       const target = db.users.find((entry) => entry.id === String(payload.toUserId || ''));
       if (!target || target.id === user.id) return sendJson(res, 400, { error: 'Игрок для обмена не найден.' });
       if (!isFriends(user.id, target.id)) return sendJson(res, 400, { error: 'Обмен можно начать только с другом.' });
-      if (userHasOpenTrade(user.id) || userHasOpenTrade(target.id)) return sendJson(res, 409, { error: 'У одного из игроков уже есть активный или ожидающий трейд.' });
+      if (tradeUtils.hasOpenTrade(user.id) || tradeUtils.hasOpenTrade(target.id)) return sendJson(res, 409, { error: 'У одного из игроков уже есть активный или ожидающий трейд.' });
 
       db.trades.push({
         id: crypto.randomUUID(),
@@ -722,14 +704,14 @@ async function handleApi(req, res, pathname) {
       if (!trade) return sendJson(res, 404, { error: 'Запрос на обмен не найден.' });
       trade.status = payload.accept ? 'active' : 'declined';
       trade.updatedAt = new Date().toISOString();
-      clearTradeConfirmations(trade);
+      tradeUtils.clearConfirmations(trade);
       saveDb();
       pushSocialUpdate();
       return sendJson(res, 200, buildClientPayload(user));
     }
 
     if (req.method === 'POST' && pathname === '/api/social/trades/select') {
-      const trade = findTrade(String(payload.tradeId || ''), user.id, ['active']);
+      const trade = tradeUtils.findTrade(String(payload.tradeId || ''), user.id, ['active']);
       if (!trade) return sendJson(res, 404, { error: 'Активный обмен не найден.' });
 
       const slotIndex = Number(payload.slotIndex);
@@ -744,7 +726,7 @@ async function handleApi(req, res, pathname) {
       if (!itemInstanceId) {
         ownSlots[slotIndex] = null;
       } else {
-        const foundItem = findTradeableItem(gameState, itemInstanceId);
+        const foundItem = tradeUtils.findItem(gameState, itemInstanceId);
         if (!foundItem) return sendJson(res, 400, { error: 'Этот предмет нельзя добавить в трейд.' });
         for (let index = 0; index < ownSlots.length; index += 1) {
           if (index !== slotIndex && ownSlots[index]?.instanceId === itemInstanceId) ownSlots[index] = null;
@@ -754,14 +736,14 @@ async function handleApi(req, res, pathname) {
 
       trade.slots[user.id] = ownSlots;
       trade.updatedAt = new Date().toISOString();
-      clearTradeConfirmations(trade);
+      tradeUtils.clearConfirmations(trade);
       saveDb();
       pushSocialUpdate();
       return sendJson(res, 200, buildClientPayload(user));
     }
 
     if (req.method === 'POST' && pathname === '/api/social/trades/confirm') {
-      const trade = findTrade(String(payload.tradeId || ''), user.id, ['active']);
+      const trade = tradeUtils.findTrade(String(payload.tradeId || ''), user.id, ['active']);
       if (!trade) return sendJson(res, 404, { error: 'Активный обмен не найден.' });
       if ((trade.slots?.[user.id] || []).every((entry) => !entry)) {
         return sendJson(res, 400, { error: 'Сначала положи хотя бы один предмет в трейд.' });
@@ -772,9 +754,9 @@ async function handleApi(req, res, pathname) {
 
       if (trade.confirmed[trade.fromUserId] && trade.confirmed[trade.toUserId]) {
         try {
-          executeTrade(trade);
+          tradeUtils.execute(trade);
         } catch (error) {
-          clearTradeConfirmations(trade);
+          tradeUtils.clearConfirmations(trade);
           saveDb();
           pushSocialUpdate();
           return sendJson(res, 409, { error: error.message || 'Не удалось завершить обмен.' });
@@ -787,11 +769,11 @@ async function handleApi(req, res, pathname) {
     }
 
     if (req.method === 'POST' && pathname === '/api/social/trades/cancel') {
-      const trade = findTrade(String(payload.tradeId || ''), user.id, ['active']);
+      const trade = tradeUtils.findTrade(String(payload.tradeId || ''), user.id, ['active']);
       if (!trade) return sendJson(res, 404, { error: 'Активный обмен не найден.' });
       trade.status = 'cancelled';
       trade.updatedAt = new Date().toISOString();
-      clearTradeConfirmations(trade);
+      tradeUtils.clearConfirmations(trade);
       saveDb();
       pushSocialUpdate();
       return sendJson(res, 200, buildClientPayload(user));
