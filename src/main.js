@@ -467,6 +467,7 @@ root.addEventListener('click', async (event) => {
     }
 
     if (shouldSyncGame) {
+      render();
       await syncGameState();
     }
   } catch (error) {
