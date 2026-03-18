@@ -134,7 +134,7 @@ root.addEventListener('click', async (event) => {
   if (!button) return;
 
   const { action } = button.dataset;
-  if (action === 'noop') return;
+  if (!action || action === 'noop') return;
 
   try {
     if (action === 'tab') {
