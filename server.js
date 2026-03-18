@@ -288,6 +288,7 @@ function pushSocialUpdate() {
     if (!user) continue;
     client.res.write(`event: social_data\ndata: ${JSON.stringify(buildClientPayload(user))}\n\n`);
   }
+  gameState.inventory.push(item);
 }
 
 function isFriends(userId, targetId) {
@@ -341,7 +342,6 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
-  gameState.inventory.push(item);
 }
 
 const tradeUtils = {
@@ -819,7 +819,11 @@ const server = http.createServer(async (req, res) => {
       }
 
       const ext = path.extname(filePath);
-      res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+      const isStaticTextAsset = ['.html', '.css', '.js'].includes(ext);
+      res.writeHead(200, {
+        'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+        ...(isStaticTextAsset ? { 'Cache-Control': 'no-store, max-age=0' } : {})
+      });
       res.end(data);
     });
   } catch (error) {
