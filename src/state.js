@@ -9,7 +9,7 @@ const defaultState = {
   workClicks: 0,
   energy: 100,
   activeTab: 'shop',
-  shopCategory: 'clothing',
+  shopCategory: null,
   inventory: [],
   ownedCars: [],
   ownedProperty: [],

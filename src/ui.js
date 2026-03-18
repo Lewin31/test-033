@@ -9,6 +9,14 @@ const slotLabels = {
   accessory: 'Аксессуар'
 };
 
+const slotIcons = {
+  head: '🧢',
+  torso: '👕',
+  legs: '👖',
+  feet: '👟',
+  accessory: '⌚'
+};
+
 function formatMoney(value) {
   return new Intl.NumberFormat('ru-RU').format(value);
 }
@@ -24,12 +32,15 @@ function renderStats(stats) {
     .join('');
 }
 
+function itemIcon(item, slotKey = null) {
+  return item?.icon || (slotKey ? slotIcons[slotKey] : '📦');
+}
+
 function shopCard(item) {
   return `
     <article class="item-tile rarity-${item.rarity}">
-      <div class="item-tile__glow"></div>
       <div class="item-tile__top">
-        <span class="item-emoji">${item.icon}</span>
+        <span class="gear-icon">${itemIcon(item)}</span>
         ${rarityBadge(item.rarity)}
       </div>
       <div class="item-tile__body">
@@ -47,7 +58,7 @@ function shopCard(item) {
 function inventoryTile(item) {
   return `
     <button class="inventory-slot rarity-${item.rarity}" data-action="equip" data-id="${item.id}">
-      <span class="inventory-slot__icon">${item.icon}</span>
+      <span class="gear-icon">${itemIcon(item, item.slot)}</span>
       <span class="inventory-slot__name">${item.name}</span>
       ${rarityBadge(item.rarity)}
     </button>
@@ -57,7 +68,7 @@ function inventoryTile(item) {
 function collectionTile(item) {
   return `
     <div class="collection-tile rarity-${item.rarity}">
-      <span class="inventory-slot__icon">${item.icon}</span>
+      <span class="gear-icon">${itemIcon(item)}</span>
       <strong>${item.name}</strong>
       ${rarityBadge(item.rarity)}
     </div>
@@ -68,7 +79,7 @@ function equipTile(slotKey, item) {
   return `
     <div class="equip-rpg-slot ${item ? `rarity-${item.rarity}` : ''}">
       <span class="equip-rpg-slot__label">${slotLabels[slotKey]}</span>
-      <span class="equip-rpg-slot__icon">${item?.icon || '✨'}</span>
+      <span class="gear-icon">${itemIcon(item, slotKey)}</span>
       <strong>${item?.name || 'Пусто'}</strong>
     </div>
   `;
@@ -76,9 +87,9 @@ function equipTile(slotKey, item) {
 
 export function renderApp(root, state) {
   const stats = getCollectionStats(state);
-  const activeOffers = state.shopOffers[state.shopCategory];
+  const activeOffers = state.shopCategory ? state.shopOffers[state.shopCategory] : [];
   const secondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
-  const currentShop = categoryMeta[state.shopCategory];
+  const currentShop = state.shopCategory ? categoryMeta[state.shopCategory] : null;
 
   root.innerHTML = `
     <div class="shell">
@@ -100,25 +111,27 @@ export function renderApp(root, state) {
         </div>
       </header>
 
+      <section class="profile-strip panel">
+        <div class="profile-strip__main">
+          <p class="section-label">Профиль</p>
+          <strong>Игрок</strong>
+          <small>Опыт ${state.exp} • Энергия ${state.energy}% • Клики ${state.workClicks}</small>
+        </div>
+        <div class="profile-strip__stats">
+          <div class="mini-card compact"><span>Уровень</span><strong>${state.level}</strong></div>
+          <div class="mini-card compact"><span>Одежда</span><strong>${stats.wardrobe}</strong></div>
+          <div class="mini-card compact"><span>Машины</span><strong>${stats.cars}</strong></div>
+        </div>
+      </section>
+
       <main class="layout">
-        <section class="panel hero-panel">
-          <div class="hero-panel__content">
-            <p class="section-label">Профиль</p>
-            <h2>Строй карьеру, собирай стиль и имущество</h2>
-            <div class="hero-stats">
-              <div><span>Опыт</span><strong>${state.exp}</strong></div>
-              <div><span>Энергия</span><strong>${state.energy}%</strong></div>
-              <div><span>Клики работы</span><strong>${state.workClicks}</strong></div>
-            </div>
-          </div>
-          <aside class="panel notifications">
-            <p class="section-label">Лента</p>
-            ${state.notifications.map((message) => `<div class="notification">${message}</div>`).join('')}
-          </aside>
-        </section>
+        <aside class="panel notifications compact-panel">
+          <p class="section-label">Лента</p>
+          ${state.notifications.map((message) => `<div class="notification">${message}</div>`).join('')}
+        </aside>
 
         ${state.activeTab === 'work' ? `
-          <section class="panel work-panel">
+          <section class="panel work-panel content-panel">
             <div class="work-card">
               <p class="section-label">Работа</p>
               <h2>Курьер в мегаполисе 📦</h2>
@@ -136,11 +149,11 @@ export function renderApp(root, state) {
         ` : ''}
 
         ${state.activeTab === 'shop' ? `
-          <section class="panel shop-panel">
+          <section class="panel shop-panel content-panel">
             <div class="shop-header">
               <div>
                 <p class="section-label">Магазин</p>
-                <h2>Выбери, в какой магазин зайти</h2>
+                <h2>Выбери один из 3 магазинов</h2>
               </div>
               <div class="refresh-box">
                 <span>Следующий завоз через</span>
@@ -153,34 +166,39 @@ export function renderApp(root, state) {
                 <button class="store-card ${state.shopCategory === key ? 'active' : ''}" data-action="shop-category" data-category="${key}">
                   <span class="store-card__icon">${meta.icon}</span>
                   <strong>${meta.label}</strong>
-                  <small>${meta.description}</small>
                 </button>
               `).join('')}
             </div>
 
-            <div class="shop-showcase panel-inner">
-              <div class="shop-showcase__header">
-                <div>
-                  <p class="section-label">${currentShop.icon} ${currentShop.label}</p>
-                  <h3>Текущие предметы в магазине</h3>
+            ${currentShop ? `
+              <div class="shop-window panel-inner">
+                <div class="shop-showcase__header">
+                  <div>
+                    <p class="section-label">${currentShop.icon} ${currentShop.label}</p>
+                    <h3>Предметы магазина</h3>
+                  </div>
+                  <button class="secondary-button" data-action="close-shop">Закрыть</button>
                 </div>
-                <span class="shop-note">5 квадратных слотов с завозом</span>
+                <div class="shop-grid square-grid">
+                  ${activeOffers.map((item) => shopCard(item)).join('')}
+                </div>
               </div>
-              <div class="shop-grid square-grid">
-                ${activeOffers.map((item) => shopCard(item)).join('')}
+            ` : `
+              <div class="shop-placeholder panel-inner">
+                <span>Нажми на одну из 3 кнопок выше, чтобы открыть магазин.</span>
               </div>
-            </div>
+            `}
           </section>
         ` : ''}
 
         ${state.activeTab === 'inventory' ? `
-          <section class="panel inventory-panel">
+          <section class="panel inventory-panel content-panel">
             <div class="inventory-rpg-layout">
               <div class="equipment-panel panel-inner">
                 <div class="equipment-panel__header">
                   <div>
                     <p class="section-label">Экипировка</p>
-                    <h2>RPG-снаряжение</h2>
+                    <h2>Снаряжение</h2>
                   </div>
                   <button class="secondary-button" data-action="open-stats">Статистика</button>
                 </div>
@@ -196,18 +214,13 @@ export function renderApp(root, state) {
                 <div class="inventory-header">
                   <div>
                     <p class="section-label">Рюкзак</p>
-                    <h2>Квадратные предметы</h2>
+                    <h2>Предметы</h2>
                   </div>
                 </div>
                 <div class="inventory-grid square-grid">
                   ${state.inventory.length
                     ? state.inventory.map((item) => inventoryTile(item)).join('')
                     : '<div class="empty-state">Пока пусто. Купи одежду в магазине.</div>'}
-                </div>
-                <div class="collection-row">
-                  <div class="mini-card"><span>Одежда</span><strong>${stats.wardrobe}/${stats.fullCatalog.clothing}</strong></div>
-                  <div class="mini-card"><span>Машины</span><strong>${stats.cars}/${stats.fullCatalog.cars}</strong></div>
-                  <div class="mini-card"><span>Недвижка</span><strong>${stats.property}/${stats.fullCatalog.property}</strong></div>
                 </div>
               </div>
             </div>

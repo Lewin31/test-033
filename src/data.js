@@ -7,20 +7,26 @@ export const rarityMap = {
 };
 
 export const categoryMeta = {
-  clothing: { label: 'Бутик одежды', icon: '🧥', description: 'Шмотки, аксессуары и бонус к заработку' },
-  cars: { label: 'Автосалон', icon: '🚗', description: 'Машины для стиля, скорости и престижа' },
-  property: { label: 'Агентство', icon: '🏠', description: 'Квартиры, дома и элитная недвижка' }
+  clothing: { label: 'Бутик одежды', icon: '🛍️', description: 'Одежда и аксессуары для персонажа' },
+  cars: { label: 'Автосалон', icon: '🚗', description: 'Машины для скорости и престижа' },
+  property: { label: 'Недвижимость', icon: '🏠', description: 'Дома, квартиры и элитные объекты' }
 };
 
 const clothingPrefixes = ['Городская', 'Неоновая', 'Премиальная', 'Уличная', 'Ночная', 'Зимняя', 'Скоростная', 'Клубная', 'Деловая', 'Люксовая'];
 const clothingTypes = ['куртка', 'футболка', 'худи', 'рубашка', 'пальто', 'кепка', 'кроссовки', 'джинсы', 'ботинки', 'часы'];
-const clothingIcons = ['🧥', '👕', '🧢', '👔', '🧣', '🧤', '👟', '👖', '🥾', '⌚'];
+const clothingSlotIcons = {
+  head: ['🧢', '🎩'],
+  torso: ['👕', '🧥'],
+  legs: ['👖'],
+  feet: ['👟', '🥾'],
+  accessory: ['⌚', '💍']
+};
 const carBrands = ['Lada', 'Toyota', 'BMW', 'Mercedes', 'Audi', 'Honda', 'Nissan', 'Hyundai', 'Porsche', 'Ford'];
 const carModels = ['Spark', 'Nova', 'Pulse', 'Drift', 'Eclipse', 'Titan', 'Falcon', 'Storm', 'Vision', 'Prime'];
-const carIcons = ['🚗', '🚙', '🏎️', '🚘', '🚓'];
+const carIcons = ['🚗', '🚘', '🚙', '🏎️'];
 const propertyPrefixes = ['Уютная', 'Современная', 'Элитная', 'Панорамная', 'Загородная', 'Центральная', 'Клубная', 'Семейная', 'Тихая', 'Престижная'];
 const propertyTypes = ['студия', 'квартира', 'дача', 'таунхаус', 'дом', 'пентхаус', 'вилла', 'лофт', 'коттедж', 'резиденция'];
-const propertyIcons = ['🏠', '🏡', '🏢', '🏘️', '🏛️'];
+const propertyIcons = ['🏠', '🏡', '🏢', '🏘️'];
 const equipmentSlots = ['head', 'torso', 'legs', 'feet', 'accessory'];
 
 function rarityByIndex(index) {
@@ -36,19 +42,25 @@ function priceByRarity(base, rarity) {
   return Math.round(base * multipliers[rarity]);
 }
 
+function clothingIconForSlot(slot, index) {
+  const icons = clothingSlotIcons[slot];
+  return icons[index % icons.length];
+}
+
 export const clothingCatalog = Array.from({ length: 100 }, (_, index) => {
   const rarity = rarityByIndex(index + 1);
   const prefix = clothingPrefixes[index % clothingPrefixes.length];
   const type = clothingTypes[index % clothingTypes.length];
+  const slot = equipmentSlots[index % equipmentSlots.length];
 
   return {
     id: `cloth-${index + 1}`,
     category: 'clothing',
-    icon: clothingIcons[index % clothingIcons.length],
+    icon: clothingIconForSlot(slot, index),
     name: `${prefix} ${type} ${index + 1}`,
     rarity,
     price: priceByRarity(1200 + index * 55, rarity),
-    slot: equipmentSlots[index % equipmentSlots.length],
+    slot,
     stats: {
       style: 2 + (index % 8),
       comfort: 1 + (index % 6),

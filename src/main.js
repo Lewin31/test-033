@@ -24,8 +24,12 @@ root.addEventListener('click', (event) => {
 
   const { action } = button.dataset;
 
-  if (action === 'tab') state.activeTab = button.dataset.tab;
+  if (action === 'tab') {
+    state.activeTab = button.dataset.tab;
+    if (button.dataset.tab === 'shop') state.shopCategory = null;
+  }
   if (action === 'shop-category') state.shopCategory = button.dataset.category;
+  if (action === 'close-shop') state.shopCategory = null;
   if (action === 'work') performWork(state);
   if (action === 'rest') restoreEnergy(state);
   if (action === 'buy') buyItem(state, button.dataset.id, button.dataset.category);
@@ -44,4 +48,5 @@ setInterval(() => {
 window.addEventListener('beforeunload', () => saveState(state));
 
 refreshShop(state);
+state.shopCategory = null;
 render();
