@@ -31,6 +31,12 @@ const tabLabels = {
   social: 'Социальное'
 };
 
+const inventorySections = {
+  clothing: { label: 'Одежда', icon: '🧥', empty: 'Рюкзак пуст.' },
+  cars: { label: 'Машины', icon: '🚗', empty: 'Пока нет машин.' },
+  property: { label: 'Недвижимость', icon: '🏠', empty: 'Пока нет недвижимости.' }
+};
+
 function formatMoney(value) {
   return new Intl.NumberFormat('ru-RU').format(value);
 }
@@ -468,6 +474,17 @@ function workShiftModal(state) {
   `;
 }
 
+function getInventorySectionItems(state) {
+  if (state.inventorySection === 'cars') return state.ownedCars;
+  if (state.inventorySection === 'property') return state.ownedProperty;
+  return state.inventory;
+}
+
+function inventoryCollectionTile(item, section) {
+  if (section === 'clothing') return inventoryTile(item);
+  return collectionTile(item);
+}
+
 function caseOpeningModal(state) {
   if (!state.caseOpening.open) return '';
 
@@ -715,13 +732,13 @@ export function renderApp(root, state) {
 
         ${state.activeTab === 'inventory' ? `
           <section class="panel inventory-panel content-panel">
-            <div class="inventory-main-grid">
+            <div class="inventory-layout">
               <div class="equipment-panel panel-inner">
                 <div class="equipment-panel__header">
                   <div>
-                    <p class="section-label">Экипировка</p>
-                    <h2>Снаряжение</h2>
-                    <p class="inventory-panel__hint">Чистый обзор персонажа, слотов и всей коллекции без перегруза интерфейса.</p>
+                    <p class="section-label">1 · Надето</p>
+                    <h2>Экипировка персонажа</h2>
+                    <p class="inventory-panel__hint">Слева — только вещи, которые сейчас надеты на персонажа.</p>
                   </div>
                   <button class="secondary-button inventory-stats-button" data-action="open-stats">Статистика</button>
                 </div>
@@ -744,7 +761,7 @@ export function renderApp(root, state) {
                     <div class="character-avatar">🧍‍♂️</div>
                     <div class="character-stage__meta">
                       <span>Твой персонаж</span>
-                      <strong>Минималистичный просмотр образа</strong>
+                      <strong>Нажми на слот, чтобы снять предмет</strong>
                     </div>
                   </div>
                   <div class="equip-grid">
@@ -752,29 +769,38 @@ export function renderApp(root, state) {
                   </div>
                 </div>
               </div>
-              <div class="backpack-panel panel-inner">
+
+              <div class="inventory-sections-panel panel-inner">
                 <div class="inventory-header">
                   <div>
-                    <p class="section-label">Рюкзак</p>
-                    <h2>Предметы</h2>
+                    <p class="section-label">2 · Разделы</p>
+                    <h2>Переключатель категорий</h2>
                   </div>
                 </div>
-                <div class="inventory-grid">
-                  ${state.inventory.length ? state.inventory.map((item) => inventoryTile(item)).join('') : '<div class="empty-state">Рюкзак пуст.</div>'}
+                <div class="inventory-section-switcher">
+                  ${Object.entries(inventorySections).map(([key, meta]) => `
+                    <button class="inventory-section-button ${state.inventorySection === key ? 'active' : ''}" data-action="inventory-section" data-section="${key}">
+                      <span class="inventory-section-button__icon">${meta.icon}</span>
+                      <span>
+                        <strong>${meta.label}</strong>
+                        <small>${key === 'clothing' ? stats.wardrobe : key === 'cars' ? stats.cars : stats.property}</small>
+                      </span>
+                    </button>
+                  `).join('')}
                 </div>
               </div>
-            </div>
-            <div class="owned-sections">
-              <div class="panel-inner owned-panel">
-                <p class="section-label">🚗 Гараж</p>
-                <div class="collection-grid">
-                  ${state.ownedCars.length ? state.ownedCars.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Пока нет машин.</div>'}
+
+              <div class="inventory-content-panel panel-inner">
+                <div class="inventory-header">
+                  <div>
+                    <p class="section-label">3 · Содержимое</p>
+                    <h2>${inventorySections[state.inventorySection].label}</h2>
+                  </div>
                 </div>
-              </div>
-              <div class="panel-inner owned-panel">
-                <p class="section-label">🏠 Недвижимость</p>
-                <div class="collection-grid">
-                  ${state.ownedProperty.length ? state.ownedProperty.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Пока нет недвижимости.</div>'}
+                <div class="${state.inventorySection === 'clothing' ? 'inventory-grid' : 'collection-grid'}">
+                  ${getInventorySectionItems(state).length
+                    ? getInventorySectionItems(state).map((item) => inventoryCollectionTile(item, state.inventorySection)).join('')
+                    : `<div class="empty-state">${inventorySections[state.inventorySection].empty}</div>`}
                 </div>
               </div>
             </div>

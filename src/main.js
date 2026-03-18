@@ -29,7 +29,8 @@ import {
   setFriendMessages,
   appendFriendMessage,
   updateCaseOpening,
-  closeCaseOpening
+  closeCaseOpening,
+  setInventorySection
 } from './state.js';
 
 const state = loadState();
@@ -89,18 +90,27 @@ function applyServerPayload(payload) {
 
 
 function animateCaseOpening() {
-  const rewardIndex = 22;
-  const cardWidth = 172;
-  const viewportCenterOffset = 320;
-  const targetOffset = rewardIndex * cardWidth - viewportCenterOffset;
+  const rewardIndex = Number.isInteger(state.caseOpening.rewardIndex) ? state.caseOpening.rewardIndex : 22;
   const animationDuration = 4380;
-  const startTime = performance.now();
 
   clearTimeout(caseSpinTimer);
   clearTimeout(caseRevealTimer);
   cancelAnimationFrame(caseAnimationFrame);
   updateCaseOpening(state, { offset: 0, reveal: false, spinning: true });
   render();
+
+  const viewport = root.querySelector('.case-roulette__viewport');
+  const firstCard = root.querySelector('.case-roulette__card');
+  const track = root.querySelector('.case-roulette__track');
+  const viewportWidth = viewport?.clientWidth || 640;
+  const cardWidth = firstCard?.getBoundingClientRect().width || 160;
+  const trackStyles = track ? getComputedStyle(track) : null;
+  const gap = Number.parseFloat(trackStyles?.columnGap || trackStyles?.gap || '12') || 12;
+  const paddingLeft = Number.parseFloat(trackStyles?.paddingLeft || '24') || 24;
+  const targetOffset = Math.max(0, Math.round(
+    paddingLeft + rewardIndex * (cardWidth + gap) + cardWidth / 2 - viewportWidth / 2
+  ));
+  const startTime = performance.now();
 
   const easeOutCubic = (progress) => 1 - ((1 - progress) ** 3);
 
@@ -110,10 +120,8 @@ function animateCaseOpening() {
     const offset = Math.round(targetOffset * easeOutCubic(progress));
 
     updateCaseOpening(state, { offset, spinning: progress < 1 });
-    const track = root.querySelector('.case-roulette__track');
-    if (track) {
-      track.style.transform = `translateX(-${offset}px)`;
-    }
+    const currentTrack = root.querySelector('.case-roulette__track');
+    if (currentTrack) currentTrack.style.transform = `translateX(-${offset}px)`;
 
     if (progress < 1) {
       caseAnimationFrame = requestAnimationFrame(step);
@@ -308,6 +316,7 @@ root.addEventListener('click', async (event) => {
       }
     }
     if (action === 'shop-category') state.shopCategory = button.dataset.category;
+    if (action === 'inventory-section') setInventorySection(state, button.dataset.section);
     if (action === 'close-shop') state.shopCategory = null;
     if (action === 'social-section') {
       state.socialSection = button.dataset.section;

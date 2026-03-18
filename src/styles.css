@@ -286,6 +286,14 @@ h1 { margin-bottom: 0; font-size: 28px; }
 .rarity-epic { box-shadow: inset 0 0 0 1px rgba(168,85,247,0.35), 0 0 32px rgba(168,85,247,0.12); }
 .rarity-mythic { box-shadow: inset 0 0 0 1px rgba(255,159,67,0.35), 0 0 36px rgba(255,159,67,0.14); }
 
+.inventory-layout {
+  min-height: 0;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(300px, 360px) minmax(220px, 260px) minmax(0, 1fr);
+  align-items: stretch;
+}
+
 .inventory-main-grid {
   min-height: 0;
   display: grid;
@@ -432,6 +440,66 @@ h1 { margin-bottom: 0; font-size: 28px; }
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+}
+.inventory-sections-panel, .inventory-content-panel, .equipment-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.inventory-section-switcher {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  align-content: start;
+}
+
+.inventory-section-button {
+  width: 100%;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: #101523;
+  color: white;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  transition: 0.2s ease;
+}
+
+.inventory-section-button:hover {
+  transform: translateY(-2px);
+}
+
+.inventory-section-button.active {
+  border-color: rgba(111, 107, 255, 0.55);
+  background: linear-gradient(135deg, rgba(111, 107, 255, 0.2), rgba(17, 22, 36, 0.98));
+  box-shadow: 0 16px 36px rgba(111, 107, 255, 0.16);
+}
+
+.inventory-section-button__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,0.06);
+  font-size: 24px;
+}
+
+.inventory-section-button strong,
+.inventory-section-button small {
+  display: block;
+}
+
+.inventory-section-button small {
+  margin-top: 4px;
+  color: var(--muted);
 }
 .owned-panel {
   min-height: 0;
@@ -652,6 +720,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
 @media (max-width: 1300px) {
   .topbar { grid-template-columns: 1fr; }
   .layout, .shop-selector, .social-selector { grid-template-columns: 1fr; }
+  .inventory-layout,
   .inventory-main-grid,
   .owned-sections {
     grid-template-columns: 1fr;

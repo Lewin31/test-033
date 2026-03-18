@@ -62,6 +62,7 @@ const defaultState = {
     gameState: null,
     messages: []
   },
+  inventorySection: 'clothing',
   workSession: {
     open: false,
     deliveredThisShift: 0,
@@ -75,7 +76,8 @@ const defaultState = {
     strip: [],
     offset: 0,
     reveal: false,
-    spinning: false
+    spinning: false,
+    rewardIndex: 0
   },
   tradePicker: {
     slotIndex: null
@@ -253,12 +255,12 @@ export function openCase(state, caseId) {
   const rewards = getCaseRewards(caseId).map((item) => normalizeItem(item));
   if (!rewards.length) return null;
 
-  const reward = normalizeItem(rewards[Math.floor(Math.random() * rewards.length)]);
-  const strip = Array.from({ length: 28 }, (_, index) => {
-    if (index === 22) return reward;
+  const rewardIndex = 22;
+  const strip = Array.from({ length: 28 }, () => {
     const sample = rewards[Math.floor(Math.random() * rewards.length)];
     return normalizeItem(sample);
   });
+  const reward = normalizeItem(strip[rewardIndex]);
 
   state.money -= caseItem.price;
   state.ownedCars.unshift(reward);
@@ -269,7 +271,8 @@ export function openCase(state, caseId) {
     strip,
     offset: 0,
     reveal: false,
-    spinning: false
+    spinning: false,
+    rewardIndex
   };
   addNotification(state, `${caseItem.name}: тебе выпала ${reward.name}.`);
   return reward;
@@ -455,4 +458,8 @@ export function updateCaseOpening(state, patch) {
 
 export function closeCaseOpening(state) {
   state.caseOpening = structuredClone(defaultState).caseOpening;
+}
+
+export function setInventorySection(state, section) {
+  state.inventorySection = ['clothing', 'cars', 'property'].includes(section) ? section : 'clothing';
 }
