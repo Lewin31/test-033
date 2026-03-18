@@ -87,75 +87,154 @@ function equipTile(slotKey, item) {
       <span class="equip-slot-card__label">${slotLabels[slotKey]}</span>
       <span class="gear-icon">${itemIcon(item, slotKey)}</span>
       <strong>${item?.name || 'Пусто'}</strong>
-      ${item ? '<small>Нажми, чтобы снять</small>' : ''}
     </button>
   `;
 }
 
-function renderSocialWindow(state) {
-  if (!state.socialSection) return '<div class="social-placeholder panel-inner"></div>';
-
-  if (state.socialSection === 'friends') {
+function authPanel(state) {
+  if (state.auth.user) {
     return `
-      <div class="social-window panel-inner">
-        <div class="social-window__header">
-          <div>
-            <p class="section-label">🫂 Друзья</p>
-            <h3>Сетевая основа уже готова</h3>
-          </div>
-          <button class="secondary-button" data-action="close-social">Закрыть</button>
+      <div class="auth-box auth-box--logged">
+        <div>
+          <p class="section-label">Аккаунт</p>
+          <h3>${state.auth.user.username}</h3>
         </div>
-        <div class="social-info-grid">
-          <div class="mini-card"><span>Статус</span><strong>${state.online.status}</strong></div>
-          <div class="mini-card"><span>Онлайн</span><strong>${state.online.onlineCount}</strong></div>
-          <div class="mini-card"><span>Railway</span><strong>WS Ready</strong></div>
-        </div>
-      </div>
-    `;
-  }
-
-  if (state.socialSection === 'trade') {
-    return `
-      <div class="social-window panel-inner">
-        <div class="social-window__header">
-          <div>
-            <p class="section-label">🤝 Обмен</p>
-            <h3>Заготовка под онлайн-обмен</h3>
-          </div>
-          <button class="secondary-button" data-action="close-social">Закрыть</button>
-        </div>
-        <div class="social-info-grid">
-          <div class="mini-card"><span>Подключение</span><strong>${state.online.status}</strong></div>
-          <div class="mini-card"><span>Игроков</span><strong>${state.online.onlineCount}</strong></div>
-          <div class="mini-card"><span>Следующий шаг</span><strong>Trade API</strong></div>
-        </div>
+        <button class="secondary-button" data-action="logout">Выйти</button>
       </div>
     `;
   }
 
   return `
+    <div class="auth-grid">
+      <form class="auth-box" data-role="register-form">
+        <p class="section-label">Регистрация</p>
+        <input name="username" placeholder="Логин" minlength="3" maxlength="24" required />
+        <input name="password" type="password" placeholder="Пароль" minlength="4" required />
+        <button type="submit">Создать аккаунт</button>
+      </form>
+      <form class="auth-box" data-role="login-form">
+        <p class="section-label">Вход</p>
+        <input name="username" placeholder="Логин" minlength="3" maxlength="24" required />
+        <input name="password" type="password" placeholder="Пароль" minlength="4" required />
+        <button type="submit">Войти</button>
+      </form>
+    </div>
+  `;
+}
+
+function friendsWindow(state) {
+  return `
+    <div class="social-window panel-inner">
+      <div class="social-window__header">
+        <div>
+          <p class="section-label">🫂 Друзья</p>
+          <h3>Список друзей и заявки</h3>
+        </div>
+        <button class="secondary-button" data-action="close-social">Закрыть</button>
+      </div>
+      <form class="inline-form" data-role="friend-form">
+        <input type="text" name="friend_username" placeholder="Логин игрока" required />
+        <button type="submit">Добавить</button>
+      </form>
+      <div class="social-columns">
+        <div class="social-list">
+          <p class="section-label">Друзья</p>
+          ${(state.social.friends.length ? state.social.friends : []).map((friend) => `
+            <div class="social-card"><strong>${friend.username}</strong><span>${friend.online ? 'онлайн' : 'оффлайн'}</span></div>
+          `).join('') || '<div class="empty-state">Друзей пока нет.</div>'}
+        </div>
+        <div class="social-list">
+          <p class="section-label">Входящие</p>
+          ${(state.social.incomingRequests.length ? state.social.incomingRequests : []).map((request) => `
+            <div class="social-card action-card">
+              <strong>${request.from.username}</strong>
+              <div class="action-row">
+                <button data-action="friend-accept" data-id="${request.id}">Принять</button>
+                <button data-action="friend-decline" data-id="${request.id}">Отклонить</button>
+              </div>
+            </div>
+          `).join('') || '<div class="empty-state">Нет входящих заявок.</div>'}
+        </div>
+        <div class="social-list">
+          <p class="section-label">Исходящие</p>
+          ${(state.social.outgoingRequests.length ? state.social.outgoingRequests : []).map((request) => `
+            <div class="social-card"><strong>${request.to.username}</strong><span>ожидает</span></div>
+          `).join('') || '<div class="empty-state">Нет исходящих заявок.</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function tradesWindow(state) {
+  return `
+    <div class="social-window panel-inner">
+      <div class="social-window__header">
+        <div>
+          <p class="section-label">🤝 Обмен</p>
+          <h3>Онлайн-трейды между игроками</h3>
+        </div>
+        <button class="secondary-button" data-action="close-social">Закрыть</button>
+      </div>
+      <form class="trade-form" data-role="trade-form">
+        <input type="text" name="trade_user" placeholder="Кому" required />
+        <input type="text" name="offered_item" placeholder="Что отдаёшь" required />
+        <input type="text" name="requested_item" placeholder="Что хочешь" required />
+        <button type="submit">Создать обмен</button>
+      </form>
+      <div class="social-list trade-list">
+        ${(state.social.trades.length ? state.social.trades : []).map((trade) => `
+          <div class="social-card action-card">
+            <strong>${trade.from.username} → ${trade.to.username}</strong>
+            <span>${trade.offeredItem} ⇄ ${trade.requestedItem}</span>
+            <span>Статус: ${trade.status}</span>
+            ${state.auth.user && trade.to.id === state.auth.user.id && trade.status === 'pending' ? `
+              <div class="action-row">
+                <button data-action="trade-accept" data-id="${trade.id}">Принять</button>
+                <button data-action="trade-decline" data-id="${trade.id}">Отклонить</button>
+              </div>
+            ` : ''}
+          </div>
+        `).join('') || '<div class="empty-state">Обменов пока нет.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function chatWindow(state) {
+  return `
     <div class="social-window panel-inner">
       <div class="social-window__header">
         <div>
           <p class="section-label">💬 Чат</p>
-          <h3>Глобальный чат</h3>
+          <h3>Глобальный чат сервера</h3>
         </div>
         <button class="secondary-button" data-action="close-social">Закрыть</button>
       </div>
       <div class="chat-feed">
-        ${(state.online.chatMessages.length ? state.online.chatMessages : [{ author: 'Система', text: 'Чат готов. Напиши первое сообщение.' }]).map((message) => `
+        ${(state.online.chatMessages.length ? state.online.chatMessages : [{ author: 'Система', text: 'Чат готов. Войди в аккаунт и напиши сообщение.' }]).map((message) => `
           <div class="chat-message">
             <strong>${message.author}</strong>
             <span>${message.text}</span>
           </div>
         `).join('')}
       </div>
-      <form class="chat-form" data-role="chat-form">
-        <input type="text" name="message" maxlength="180" placeholder="Написать в чат..." />
-        <button type="submit">Отправить</button>
-      </form>
+      ${state.auth.user ? `
+        <form class="chat-form" data-role="chat-form">
+          <input type="text" name="message" maxlength="180" placeholder="Написать в чат..." />
+          <button type="submit">Отправить</button>
+        </form>
+      ` : '<div class="empty-state">Сначала зарегистрируйся или войди.</div>'}
     </div>
   `;
+}
+
+function renderSocialWindow(state) {
+  if (!state.auth.user) return '<div class="social-placeholder panel-inner"><div class="empty-state">Авторизуйся, чтобы пользоваться онлайном.</div></div>';
+  if (!state.socialSection) return '<div class="social-placeholder panel-inner"></div>';
+  if (state.socialSection === 'friends') return friendsWindow(state);
+  if (state.socialSection === 'trade') return tradesWindow(state);
+  return chatWindow(state);
 }
 
 export function renderApp(root, state) {
@@ -186,7 +265,7 @@ export function renderApp(root, state) {
         </div>
       </header>
 
-      <main class="layout ${state.activeTab === 'inventory' ? 'inventory-layout-mode' : ''}">
+      <main class="layout">
         <aside class="panel notifications compact-panel">
           <p class="section-label">Лента</p>
           ${state.notifications.map((message) => `<div class="notification">${message}</div>`).join('')}
@@ -222,7 +301,6 @@ export function renderApp(root, state) {
                 <strong>${secondsLeft} сек.</strong>
               </div>
             </div>
-
             <div class="shop-selector">
               ${Object.entries(categoryMeta).map(([key, meta]) => `
                 <button class="store-card ${state.shopCategory === key ? 'active' : ''}" data-action="shop-category" data-category="${key}">
@@ -231,7 +309,6 @@ export function renderApp(root, state) {
                 </button>
               `).join('')}
             </div>
-
             ${currentShop ? `
               <div class="shop-window panel-inner">
                 <div class="shop-showcase__header">
@@ -267,7 +344,6 @@ export function renderApp(root, state) {
                   </div>
                 </div>
               </div>
-
               <div class="backpack-panel panel-inner">
                 <div class="inventory-header">
                   <div>
@@ -276,13 +352,10 @@ export function renderApp(root, state) {
                   </div>
                 </div>
                 <div class="inventory-grid">
-                  ${state.inventory.length
-                    ? state.inventory.map((item) => inventoryTile(item)).join('')
-                    : '<div class="empty-state">Рюкзак пуст.</div>'}
+                  ${state.inventory.length ? state.inventory.map((item) => inventoryTile(item)).join('') : '<div class="empty-state">Рюкзак пуст.</div>'}
                 </div>
               </div>
             </div>
-
             <div class="owned-sections">
               <div class="panel-inner owned-panel">
                 <p class="section-label">🚗 Гараж</p>
@@ -302,13 +375,15 @@ export function renderApp(root, state) {
 
         ${state.activeTab === 'social' ? `
           <section class="panel social-panel content-panel">
+            ${authPanel(state)}
+            ${state.auth.error ? `<div class="auth-error">${state.auth.error}</div>` : ''}
             <div class="shop-header">
               <div>
                 <p class="section-label">Социальное</p>
-                <h2>База для онлайна на Railway</h2>
+                <h2>Регистрация, друзья, трейды и чат</h2>
               </div>
               <div class="refresh-box">
-                <span>Статус сокета</span>
+                <span>Статус сервера</span>
                 <strong>${state.online.status}</strong>
               </div>
             </div>

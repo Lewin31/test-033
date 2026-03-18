@@ -1,6 +1,6 @@
 import { getRandomItems, catalogs } from './data.js';
 
-const STORAGE_KEY = 'life-sim-save-v1';
+const STORAGE_KEY = 'life-sim-save-v2';
 
 const defaultState = {
   money: 15000,
@@ -26,10 +26,21 @@ const defaultState = {
     cars: getRandomItems('cars', 5),
     property: getRandomItems('property', 5)
   },
+  auth: {
+    token: '',
+    user: null,
+    error: ''
+  },
   online: {
     status: 'connecting',
     onlineCount: 0,
     chatMessages: []
+  },
+  social: {
+    friends: [],
+    incomingRequests: [],
+    outgoingRequests: [],
+    trades: []
   },
   shopRefreshAt: Date.now() + 30000,
   showStats: false,
@@ -46,6 +57,8 @@ export function loadState() {
       ...saved,
       socialSection: null,
       online: structuredClone(defaultState).online,
+      social: structuredClone(defaultState).social,
+      auth: { ...structuredClone(defaultState).auth, ...(saved.auth || {}) },
       equipped: { ...structuredClone(defaultState).equipped, ...(saved.equipped || {}) },
       shopOffers: { ...structuredClone(defaultState).shopOffers, ...(saved.shopOffers || {}) }
     };
@@ -58,7 +71,9 @@ export function saveState(state) {
   const persistedState = {
     ...state,
     socialSection: null,
-    online: undefined
+    online: undefined,
+    social: undefined,
+    auth: { token: state.auth.token, user: state.auth.user, error: '' }
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
 }
@@ -143,9 +158,7 @@ export function equipItem(state, itemId) {
 
   const [item] = state.inventory.splice(itemIndex, 1);
   const previousItem = state.equipped[item.slot];
-
   if (previousItem) state.inventory.unshift(previousItem);
-
   state.equipped[item.slot] = item;
   addNotification(state, `${item.name} экипирован.`);
 }
@@ -153,7 +166,6 @@ export function equipItem(state, itemId) {
 export function unequipItem(state, slotKey) {
   const equippedItem = state.equipped[slotKey];
   if (!equippedItem) return;
-
   state.inventory.unshift(equippedItem);
   state.equipped[slotKey] = null;
   addNotification(state, `${equippedItem.name} снят.`);
@@ -168,7 +180,26 @@ export function updateOnlineStatus(state, patch) {
 }
 
 export function appendChatMessage(state, message) {
-  state.online.chatMessages = [...state.online.chatMessages.slice(-19), message];
+  state.online.chatMessages = [...state.online.chatMessages.slice(-29), message];
+}
+
+export function setAuth(state, authPatch) {
+  state.auth = {
+    ...state.auth,
+    ...authPatch
+  };
+}
+
+export function setSocialData(state, socialPatch) {
+  state.social = {
+    ...state.social,
+    ...socialPatch
+  };
+}
+
+export function resetSocialState(state) {
+  state.social = structuredClone(defaultState).social;
+  state.online.chatMessages = [];
 }
 
 export function getCollectionStats(state) {

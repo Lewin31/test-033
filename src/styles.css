@@ -456,3 +456,88 @@ h1 { margin-bottom: 0; font-size: 28px; }
   .shop-grid { grid-auto-columns: minmax(240px, 1fr); }
   .equip-grid { grid-template-columns: 1fr; }
 }
+
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.auth-box {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: #101523;
+}
+.auth-box input, .inline-form input, .trade-form input {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #0f1320;
+  color: white;
+  padding: 12px 14px;
+}
+.auth-box button, .inline-form button, .trade-form button, .action-row button {
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6f6bff, #8f6bff);
+  color: white;
+}
+.auth-box--logged {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+.auth-error {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 99, 132, 0.35);
+  background: rgba(255, 99, 132, 0.08);
+  color: #ffd2dc;
+}
+.social-columns {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.social-list, .trade-list {
+  min-height: 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  overflow: auto;
+}
+.social-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: #101523;
+}
+.action-card {
+  align-content: start;
+}
+.action-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inline-form, .trade-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+.trade-form {
+  grid-template-columns: repeat(3, 1fr) auto;
+}
+.social-panel .empty-state, .social-placeholder {
+  min-height: 140px;
+}
+
+@media (max-width: 1300px) {
+  .auth-grid, .social-columns, .trade-form {
+    grid-template-columns: 1fr;
+  }
+}
