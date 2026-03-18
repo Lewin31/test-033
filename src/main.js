@@ -495,6 +495,11 @@ root.addEventListener('click', async (event) => {
     addNotification(state, error.message);
   }
 
+  if (preserveAnimatedCaseFrame) {
+    saveState(state);
+    return;
+  }
+
   render();
 });
 
@@ -568,14 +573,22 @@ root.addEventListener('submit', async (event) => {
       input.value = '';
     }
   } catch (error) {
+    preserveAnimatedCaseFrame = false;
     setAuth(state, { error: error.message });
     addNotification(state, error.message);
+  }
+
+  if (preserveAnimatedCaseFrame) {
+    saveState(state);
+    return;
   }
 
   render();
 });
 
 setInterval(() => {
+  if (!state.auth.user) return;
+
   const changed = ensureFreshShop(state);
   const secondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
   const shouldRenderShopTimer = state.activeTab === 'shop' && secondsLeft !== lastShopSecondsLeft;

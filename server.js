@@ -288,6 +288,7 @@ function pushSocialUpdate() {
     if (!user) continue;
     client.res.write(`event: social_data\ndata: ${JSON.stringify(buildClientPayload(user))}\n\n`);
   }
+  gameState.inventory.push(item);
 }
 
 function isFriends(userId, targetId) {
