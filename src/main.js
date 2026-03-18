@@ -452,6 +452,11 @@ root.addEventListener('click', async (event) => {
     addNotification(state, error.message);
   }
 
+  if (preserveAnimatedCaseFrame) {
+    saveState(state);
+    return;
+  }
+
   render();
 });
 
@@ -525,8 +530,14 @@ root.addEventListener('submit', async (event) => {
       input.value = '';
     }
   } catch (error) {
+    preserveAnimatedCaseFrame = false;
     setAuth(state, { error: error.message });
     addNotification(state, error.message);
+  }
+
+  if (preserveAnimatedCaseFrame) {
+    saveState(state);
+    return;
   }
 
   render();
