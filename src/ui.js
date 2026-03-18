@@ -1,5 +1,5 @@
-import { rarityMap, categoryMeta } from './data.js';
-import { getCollectionStats } from './state.js';
+import { rarityMap, categoryMeta, caseCatalog } from './data.js';
+import { getCollectionStats, getTradeableItems, getExpProgress } from './state.js';
 
 const slotLabels = {
   head: 'Голова',
@@ -23,12 +23,20 @@ const socialMeta = {
   chat: { label: 'Чат', icon: '💬' }
 };
 
+const tabLabels = {
+  work: 'Работа',
+  shop: 'Магазин',
+  cases: 'Кейсы',
+  inventory: 'Инвентарь',
+  social: 'Социальное'
+};
+
 function formatMoney(value) {
   return new Intl.NumberFormat('ru-RU').format(value);
 }
 
 function rarityBadge(rarity) {
-  const config = rarityMap[rarity];
+  const config = rarityMap[rarity] || rarityMap.common;
   return `<span class="rarity-badge" style="--rarity:${config.color};--rarity-glow:${config.glow}">${config.label}</span>`;
 }
 
@@ -61,9 +69,28 @@ function shopCard(item) {
   `;
 }
 
+function caseCard(item) {
+  return `
+    <article class="item-tile rarity-${item.rarity} case-tile">
+      <div class="item-tile__top">
+        <span class="gear-icon">${item.icon}</span>
+        ${rarityBadge(item.rarity)}
+      </div>
+      <div class="item-tile__body">
+        <h3>${item.name}</h3>
+        <p>${item.description}</p>
+      </div>
+      <div class="item-tile__footer">
+        <strong class="price">$${formatMoney(item.price)}</strong>
+        <button data-action="open-case" data-id="${item.id}">Открыть</button>
+      </div>
+    </article>
+  `;
+}
+
 function inventoryTile(item) {
   return `
-    <button class="inventory-slot rarity-${item.rarity}" data-action="equip" data-id="${item.id}">
+    <button class="inventory-slot rarity-${item.rarity}" data-action="equip" data-id="${item.instanceId}">
       <span class="gear-icon">${itemIcon(item, item.slot)}</span>
       <span class="inventory-slot__name">${item.name}</span>
       ${rarityBadge(item.rarity)}
@@ -123,6 +150,8 @@ function authPanel(state) {
 }
 
 function friendsWindow(state) {
+  const activeTrade = state.social.activeTrade;
+
   return `
     <div class="social-window panel-inner">
       <div class="social-window__header">
@@ -140,7 +169,18 @@ function friendsWindow(state) {
         <div class="social-list">
           <p class="section-label">Друзья</p>
           ${(state.social.friends.length ? state.social.friends : []).map((friend) => `
-            <div class="social-card"><strong>${friend.username}</strong><span>${friend.online ? 'онлайн' : 'оффлайн'}</span></div>
+            <div class="social-card action-card">
+              <div class="social-card__title-row">
+                <strong>${friend.username}</strong>
+                <span>${friend.online ? 'онлайн' : 'оффлайн'}</span>
+              </div>
+              <div class="friend-actions">
+                <button class="friend-action friend-action--ghost" data-action="friend-view-inventory" data-friend-id="${friend.id}">Инвентарь</button>
+                <button class="friend-action friend-action--ghost" data-action="friend-open-messages" data-friend-id="${friend.id}">ЛС</button>
+                <button class="friend-action" ${activeTrade ? 'disabled' : ''} data-action="trade-request" data-user-id="${friend.id}">Трейд</button>
+                <button class="friend-action friend-action--danger" data-action="friend-remove" data-friend-id="${friend.id}">Удалить</button>
+              </div>
+            </div>
           `).join('') || '<div class="empty-state">Друзей пока нет.</div>'}
         </div>
         <div class="social-list">
@@ -166,36 +206,176 @@ function friendsWindow(state) {
   `;
 }
 
+function tradeRequestCard(request, incoming) {
+  return `
+    <div class="social-card action-card">
+      <strong>${incoming ? request.from.username : request.to.username}</strong>
+      <span>${incoming ? 'хочет начать обмен' : 'ждёт подтверждения обмена'}</span>
+      ${incoming ? `
+        <div class="action-row">
+          <button data-action="trade-accept" data-id="${request.id}">Принять</button>
+          <button data-action="trade-decline" data-id="${request.id}">Отклонить</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function tradeSlot(item, { slotIndex, editable }) {
+  return `
+    <button class="trade-slot ${item ? `rarity-${item.rarity}` : ''}" ${editable ? `data-action="trade-open-slot" data-slot="${slotIndex}"` : 'disabled'}>
+      <span class="gear-icon">${itemIcon(item)}</span>
+      <strong>${item?.name || 'Пустой слот'}</strong>
+      <span class="trade-slot__hint">${item ? 'Нажми, чтобы заменить' : 'Выбрать предмет'}</span>
+    </button>
+  `;
+}
+
+function tradeBoard(state) {
+  const trade = state.social.activeTrade;
+  if (!trade) return '';
+
+  return `
+    <div class="trade-board trade-modal-board">
+      <div class="social-window__header">
+        <div>
+          <p class="section-label">🤝 Активный трейд</p>
+          <h3>${trade.partner.username}</h3>
+          <p class="trade-board__status">Твои слоты слева, слоты друга справа. После выбора оба подтверждают сделку.</p>
+        </div>
+        <div class="action-row">
+          <button class="secondary-button" data-action="trade-close-modal">Свернуть</button>
+          <button class="secondary-button" data-action="trade-cancel">Отменить обмен</button>
+        </div>
+      </div>
+      <div class="trade-status-row">
+        <div class="trade-status-chip ${trade.ownConfirmed ? 'ready' : ''}">Ты: ${trade.ownConfirmed ? 'подтвердил' : 'ожидает подтверждения'}</div>
+        <div class="trade-status-chip ${trade.partnerConfirmed ? 'ready' : ''}">${trade.partner.username}: ${trade.partnerConfirmed ? 'подтвердил' : 'ожидает подтверждения'}</div>
+      </div>
+      <div class="trade-board__shell">
+        <div class="trade-board__half">
+          <div class="trade-board__title">Твои предметы</div>
+          <div class="trade-grid">
+            ${trade.ownSlots.map((item, slotIndex) => tradeSlot(item, { slotIndex, editable: true })).join('')}
+          </div>
+        </div>
+        <div class="trade-board__divider"></div>
+        <div class="trade-board__half">
+          <div class="trade-board__title">Предметы друга</div>
+          <div class="trade-grid trade-grid--readonly">
+            ${trade.partnerSlots.map((item, slotIndex) => tradeSlot(item, { slotIndex, editable: false })).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="trade-board__actions">
+        <button class="primary-button" data-action="trade-confirm" ${trade.ownSlots.every((item) => !item) ? 'disabled' : ''}>Подтвердить сделку</button>
+        <span class="trade-board__note">Если кто-то меняет слот, подтверждения сбрасываются автоматически.</span>
+      </div>
+    </div>
+  `;
+}
+
+function activeTradeSummary(state) {
+  const trade = state.social.activeTrade;
+  if (!trade) return '';
+
+  return `
+    <div class="social-card trade-active-card">
+      <div>
+        <p class="section-label">Активный трейд</p>
+        <strong>${trade.partner.username}</strong>
+        <span>Обмен открыт в отдельном окне поверх интерфейса.</span>
+      </div>
+      <button data-action="trade-open-modal">Открыть окно обмена</button>
+    </div>
+  `;
+}
+
+function tradePickerModal(state) {
+  const trade = state.social.activeTrade;
+  const slotIndex = state.tradePicker.slotIndex;
+  if (!trade || !Number.isInteger(slotIndex)) return '';
+
+  const currentItem = trade.ownSlots[slotIndex] || null;
+  const selectedIds = new Set(trade.ownSlots.filter(Boolean).map((item) => item.instanceId));
+  const items = getTradeableItems(state)
+    .filter((item) => item.instanceId === currentItem?.instanceId || !selectedIds.has(item.instanceId));
+
+  return `
+    <div class="modal visible trade-picker-modal">
+      <div class="modal__content trade-picker-modal__content">
+        <div class="modal__header">
+          <div>
+            <p class="section-label">Выбор предмета</p>
+            <h3>Слот ${slotIndex + 1}</h3>
+          </div>
+          <button class="icon-button" data-action="trade-close-picker">✕</button>
+        </div>
+        <div class="trade-picker-list">
+          ${items.length ? items.map((item) => `
+            <button class="trade-picker-item rarity-${item.rarity}" data-action="trade-select-item" data-instance-id="${item.instanceId}">
+              <span class="gear-icon">${item.icon}</span>
+              <span>
+                <strong>${item.name}</strong>
+                <small>${item.collectionLabel}</small>
+              </span>
+              ${rarityBadge(item.rarity)}
+            </button>
+          `).join('') : '<div class="empty-state">Нет доступных предметов для обмена.</div>'}
+        </div>
+        ${currentItem ? '<button class="secondary-button trade-picker-clear" data-action="trade-clear-slot">Убрать предмет из слота</button>' : ''}
+      </div>
+    </div>
+  `;
+}
+
 function tradesWindow(state) {
   return `
-    <div class="social-window panel-inner">
+    <div class="social-window panel-inner trade-window-layout">
       <div class="social-window__header">
         <div>
           <p class="section-label">🤝 Обмен</p>
-          <h3>Онлайн-трейды между игроками</h3>
+          <h3>Запрос → принятие → выбор предметов → подтверждение</h3>
         </div>
         <button class="secondary-button" data-action="close-social">Закрыть</button>
       </div>
-      <form class="trade-form" data-role="trade-form">
-        <input type="text" name="trade_user" placeholder="Кому" required />
-        <input type="text" name="offered_item" placeholder="Что отдаёшь" required />
-        <input type="text" name="requested_item" placeholder="Что хочешь" required />
-        <button type="submit">Создать обмен</button>
-      </form>
-      <div class="social-list trade-list">
-        ${(state.social.trades.length ? state.social.trades : []).map((trade) => `
-          <div class="social-card action-card">
-            <strong>${trade.from.username} → ${trade.to.username}</strong>
-            <span>${trade.offeredItem} ⇄ ${trade.requestedItem}</span>
-            <span>Статус: ${trade.status}</span>
-            ${state.auth.user && trade.to.id === state.auth.user.id && trade.status === 'pending' ? `
-              <div class="action-row">
-                <button data-action="trade-accept" data-id="${trade.id}">Принять</button>
-                <button data-action="trade-decline" data-id="${trade.id}">Отклонить</button>
+      ${activeTradeSummary(state)}
+      <div class="social-columns trade-requests-columns">
+        <div class="social-list">
+          <p class="section-label">Входящие запросы</p>
+          ${state.social.incomingTradeRequests.length
+            ? state.social.incomingTradeRequests.map((request) => tradeRequestCard(request, true)).join('')
+            : '<div class="empty-state">Нет входящих запросов на обмен.</div>'}
+        </div>
+        <div class="social-list">
+          <p class="section-label">Исходящие запросы</p>
+          ${state.social.outgoingTradeRequests.length
+            ? state.social.outgoingTradeRequests.map((request) => tradeRequestCard(request, false)).join('')
+            : '<div class="empty-state">Нет исходящих запросов на обмен.</div>'}
+        </div>
+        <div class="social-list">
+          <p class="section-label">История</p>
+          ${state.social.tradeHistory.length
+            ? state.social.tradeHistory.map((trade) => `
+              <div class="social-card">
+                <strong>${trade.partner.username}</strong>
+                <span>Статус: ${trade.statusLabel}</span>
               </div>
-            ` : ''}
-          </div>
-        `).join('') || '<div class="empty-state">Обменов пока нет.</div>'}
+            `).join('')
+            : '<div class="empty-state">История обменов пуста.</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function tradeModal(state) {
+  if (!state.social.activeTrade || !state.tradeModalOpen) return '';
+
+  return `
+    <div class="modal visible trade-session-modal">
+      <div class="modal__content trade-session-modal__content">
+        ${tradeBoard(state)}
       </div>
     </div>
   `;
@@ -237,6 +417,163 @@ function renderSocialWindow(state) {
   return chatWindow(state);
 }
 
+function workShiftModal(state) {
+  if (!state.workSession.open) return '';
+
+  const actionsToExp = state.workClicks % 5 === 0 ? 5 : 5 - (state.workClicks % 5);
+  return `
+    <div class="modal visible work-shift-modal">
+      <div class="modal__content work-shift-modal__content">
+        <div class="modal__header">
+          <div>
+            <p class="section-label">Работа грузчиком</p>
+            <h3>Перетащи ящик из зоны A в зону B</h3>
+          </div>
+          <button class="icon-button" data-action="work-close">✕</button>
+        </div>
+        <div class="work-shift-summary">
+          <div class="mini-card"><span>За эту смену</span><strong>${state.workSession.deliveredThisShift}</strong></div>
+          <div class="mini-card"><span>Заработано</span><strong>$${formatMoney(state.workSession.shiftEarnings)}</strong></div>
+          <div class="mini-card"><span>Энергия</span><strong>${state.energy}%</strong></div>
+          <div class="mini-card"><span>До EXP</span><strong>${actionsToExp} ящ.</strong></div>
+        </div>
+        <div class="work-shift-board">
+          <div class="work-zone work-zone--start" data-work-dropzone="start">
+            <span class="work-zone__label">Точка A</span>
+            <p>Зажми ящик и перетащи его на склад.</p>
+            <button class="work-crate ${state.workSession.pendingDrop ? 'work-crate--locked' : ''}" ${state.workSession.pendingDrop ? 'disabled' : ''} data-work-crate>
+              <span class="work-crate__emoji">📦</span>
+              <strong>Ящик</strong>
+              <small>Тяни курсором</small>
+            </button>
+          </div>
+          <div class="work-shift-track">
+            <div class="work-shift-track__line"></div>
+            <span>→</span>
+          </div>
+          <div class="work-zone work-zone--finish" data-work-dropzone="target">
+            <span class="work-zone__label">Точка B</span>
+            <p>Отпусти ящик внутри этой зоны, чтобы завершить перенос.</p>
+            <div class="work-drop-target ${state.workSession.pendingDrop ? 'work-drop-target--busy' : ''}">
+              <span>Склад</span>
+            </div>
+          </div>
+        </div>
+        <div class="work-shift-footer">
+          <p>За каждый успешно доставленный ящик начисляются деньги и тратится энергия. Каждые 5 ящиков дают опыт.</p>
+          <button class="secondary-button" data-action="rest">Отдохнуть</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function caseOpeningModal(state) {
+  if (!state.caseOpening.open) return '';
+
+  return `
+    <div class="modal visible case-opening-modal">
+      <div class="modal__content case-opening-modal__content">
+        <div class="modal__header">
+          <div>
+            <p class="section-label">Кейс</p>
+            <h3>Прокрутка дропа</h3>
+          </div>
+          <button class="icon-button" data-action="case-close-modal">✕</button>
+        </div>
+        <div class="case-roulette">
+          <div class="case-roulette__pointer"></div>
+          <div class="case-roulette__viewport">
+            <div class="case-roulette__track ${state.caseOpening.spinning ? 'is-spinning' : ''}" style="transform: translateX(-${state.caseOpening.offset}px)">
+              ${state.caseOpening.strip.map((item) => `
+                <div class="case-roulette__card rarity-${item.rarity}">
+                  <span class="gear-icon">${item.icon}</span>
+                  <strong>${item.name}</strong>
+                  ${rarityBadge(item.rarity)}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="case-opening-result ${state.caseOpening.reveal ? 'visible' : ''}">
+          <p class="section-label">Выбито</p>
+          ${state.caseOpening.reward ? collectionTile(state.caseOpening.reward) : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function friendModal(state) {
+  if (!state.friendModal.open || !state.friendModal.friend) return '';
+
+  const friend = state.friendModal.friend;
+  const gameState = state.friendModal.gameState || { equipped: {}, inventory: [], ownedCars: [], ownedProperty: [] };
+  return `
+    <div class="modal visible friend-modal">
+      <div class="modal__content friend-modal__content">
+        <div class="modal__header">
+          <div>
+            <p class="section-label">Друг</p>
+            <h3>${friend.username}</h3>
+          </div>
+          <button class="icon-button" data-action="friend-modal-close">✕</button>
+        </div>
+        <div class="friend-modal__tabs">
+          <button class="tab ${state.friendModal.mode === 'inventory' ? 'active' : ''}" data-action="friend-modal-mode" data-mode="inventory">Инвентарь</button>
+          <button class="tab ${state.friendModal.mode === 'messages' ? 'active' : ''}" data-action="friend-modal-mode" data-mode="messages">Личные сообщения</button>
+        </div>
+        ${state.friendModal.mode === 'inventory' ? `
+          <div class="friend-modal__inventory">
+            <div class="panel-inner">
+              <p class="section-label">Экипировано</p>
+              <div class="collection-grid">
+                ${Object.values(gameState.equipped || {}).filter(Boolean).length
+                  ? Object.values(gameState.equipped || {}).filter(Boolean).map((item) => collectionTile(item)).join('')
+                  : '<div class="empty-state">Ничего не экипировано.</div>'}
+              </div>
+            </div>
+            <div class="panel-inner">
+              <p class="section-label">Рюкзак</p>
+              <div class="collection-grid">
+                ${gameState.inventory?.length ? gameState.inventory.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Рюкзак пуст.</div>'}
+              </div>
+            </div>
+            <div class="panel-inner">
+              <p class="section-label">Гараж</p>
+              <div class="collection-grid">
+                ${gameState.ownedCars?.length ? gameState.ownedCars.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Машин нет.</div>'}
+              </div>
+            </div>
+            <div class="panel-inner">
+              <p class="section-label">Недвижимость</p>
+              <div class="collection-grid">
+                ${gameState.ownedProperty?.length ? gameState.ownedProperty.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Недвижимости нет.</div>'}
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="friend-modal__messages">
+            <div class="chat-feed friend-chat-feed">
+              ${state.friendModal.messages.length
+                ? state.friendModal.messages.map((message) => `
+                  <div class="chat-message ${message.own ? 'chat-message--own' : ''}">
+                    <strong>${message.author?.username || friend.username}</strong>
+                    <span>${message.text}</span>
+                  </div>
+                `).join('')
+                : '<div class="empty-state">Сообщений пока нет.</div>'}
+            </div>
+            <form class="chat-form" data-role="dm-form">
+              <input type="text" name="dm_text" maxlength="240" placeholder="Написать сообщение другу..." />
+              <button type="submit">Отправить</button>
+            </form>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
 
 function authOverlay(state) {
   if (state.auth.user) return '';
@@ -260,6 +597,7 @@ export function renderApp(root, state) {
   const activeOffers = state.shopCategory ? state.shopOffers[state.shopCategory] : [];
   const secondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
   const currentShop = state.shopCategory ? categoryMeta[state.shopCategory] : null;
+  const expProgress = getExpProgress(state);
 
   root.innerHTML = `
     <div class="shell">
@@ -269,16 +607,29 @@ export function renderApp(root, state) {
           <h1>Симулятор жизни</h1>
         </div>
         <nav class="tabs">
-          ${['work', 'shop', 'inventory', 'social'].map((tab) => `
+          ${['work', 'shop', 'cases', 'inventory', 'social'].map((tab) => `
             <button class="tab ${state.activeTab === tab ? 'active' : ''}" data-action="tab" data-tab="${tab}">
-              ${tab === 'work' ? 'Работа' : tab === 'shop' ? 'Магазин' : tab === 'inventory' ? 'Инвентарь' : 'Социальное'}
+              ${tabLabels[tab]}
             </button>
           `).join('')}
         </nav>
-        <div class="topbar-stats">
-          <div class="top-chip"><span>$</span><strong>${formatMoney(state.money)}</strong></div>
-          <div class="top-chip"><span>LVL</span><strong>${state.level}</strong></div>
-          <div class="top-chip"><span>ENG</span><strong>${state.energy}%</strong></div>
+        <div class="topbar-stats topbar-stats--rich">
+          <div class="money-card">
+            <span class="money-card__brand">LIFE PAY</span>
+            <strong>$${formatMoney(state.money)}</strong>
+            <small>игровой баланс</small>
+          </div>
+          <div class="progress-card">
+            <div class="top-chip"><span>LVL</span><strong>${state.level}</strong></div>
+            <div class="progress-line-card">
+              <span>Энергия</span>
+              <div class="progress-line"><i style="width:${state.energy}%"></i></div>
+            </div>
+            <div class="progress-line-card progress-line-card--exp">
+              <span>Опыт ${expProgress}/100</span>
+              <div class="progress-line"><i style="width:${expProgress}%"></i></div>
+            </div>
+          </div>
           <div class="top-chip online ${state.online.status}"><span>ONLINE</span><strong>${state.online.onlineCount}</strong></div>
         </div>
       </header>
@@ -293,10 +644,10 @@ export function renderApp(root, state) {
           <section class="panel work-panel content-panel">
             <div class="work-card">
               <p class="section-label">Работа</p>
-              <h2>Курьер в мегаполисе 📦</h2>
-              <p>Нажимай на кнопку, выполняй доставку и получай деньги. Каждые 5 действий дают опыт.</p>
+              <h2>Грузчик на складе 📦</h2>
+              <p>Открой смену, перетаскивай ящик из точки A в точку B и получай оплату за каждый успешный перенос.</p>
               <div class="work-actions">
-                <button class="primary-button" data-action="work">Выйти на смену</button>
+                <button class="primary-button" data-action="work-open">Выйти на смену</button>
                 <button class="secondary-button" data-action="rest">Отдохнуть</button>
               </div>
               <div class="work-summary">
@@ -344,6 +695,24 @@ export function renderApp(root, state) {
           </section>
         ` : ''}
 
+        ${state.activeTab === 'cases' ? `
+          <section class="panel shop-panel content-panel">
+            <div class="shop-header">
+              <div>
+                <p class="section-label">Кейсы</p>
+                <h2>Автомобильные кейсы</h2>
+              </div>
+              <div class="refresh-box">
+                <span>Всего кейсов</span>
+                <strong>${caseCatalog.length}</strong>
+              </div>
+            </div>
+            <div class="cases-grid">
+              ${caseCatalog.map((item) => caseCard(item)).join('')}
+            </div>
+          </section>
+        ` : ''}
+
         ${state.activeTab === 'inventory' ? `
           <section class="panel inventory-panel content-panel">
             <div class="inventory-main-grid">
@@ -352,6 +721,7 @@ export function renderApp(root, state) {
                   <div>
                     <p class="section-label">Экипировка</p>
                     <h2>Снаряжение</h2>
+                    <p class="inventory-panel__hint">Компактный обзор персонажа и быстрый доступ к слотам.</p>
                   </div>
                   <button class="secondary-button" data-action="open-stats">Статистика</button>
                 </div>
@@ -418,6 +788,11 @@ export function renderApp(root, state) {
       </main>
 
       ${authOverlay(state)}
+      ${friendModal(state)}
+      ${tradeModal(state)}
+      ${tradePickerModal(state)}
+      ${workShiftModal(state)}
+      ${caseOpeningModal(state)}
 
       <div class="modal ${state.showStats ? 'visible' : ''}">
         <div class="modal__content">
