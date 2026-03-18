@@ -721,17 +721,30 @@ export function renderApp(root, state) {
                   <div>
                     <p class="section-label">Экипировка</p>
                     <h2>Снаряжение</h2>
-                    <p class="inventory-panel__hint">Отдельные слоты экипировки и быстрый доступ к общей статистике.</p>
+                    <p class="inventory-panel__hint">Чистый обзор персонажа, слотов и всей коллекции без перегруза интерфейса.</p>
                   </div>
                   <button class="secondary-button inventory-stats-button" data-action="open-stats">Статистика</button>
                 </div>
+                <div class="inventory-overview">
+                  <div class="inventory-overview__item">
+                    <span>Экипировано</span>
+                    <strong>${Object.values(state.equipped).filter(Boolean).length}/5</strong>
+                  </div>
+                  <div class="inventory-overview__item">
+                    <span>Гардероб</span>
+                    <strong>${stats.wardrobe}</strong>
+                  </div>
+                  <div class="inventory-overview__item">
+                    <span>Транспорт</span>
+                    <strong>${stats.cars}</strong>
+                  </div>
+                </div>
                 <div class="character-frame">
                   <div class="character-stage">
-                    <div class="character-stage__glow"></div>
                     <div class="character-avatar">🧍‍♂️</div>
                     <div class="character-stage__meta">
-                      <span>Персонаж</span>
-                      <strong>Экипировано ${Object.values(state.equipped).filter(Boolean).length}/5</strong>
+                      <span>Твой персонаж</span>
+                      <strong>Минималистичный просмотр образа</strong>
                     </div>
                   </div>
                   <div class="equip-grid">

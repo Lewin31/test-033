@@ -37,6 +37,8 @@ const root = document.getElementById('app');
 let events;
 let caseRevealTimer;
 let caseSpinTimer;
+let caseAnimationFrame;
+
 const dragState = { active: false, pointerId: null, originX: 0, originY: 0, currentX: 0, currentY: 0, crate: null };
 let lastShopSecondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
 
@@ -91,30 +93,38 @@ function animateCaseOpening() {
   const cardWidth = 172;
   const viewportCenterOffset = 320;
   const targetOffset = rewardIndex * cardWidth - viewportCenterOffset;
+  const animationDuration = 4380;
+  const startTime = performance.now();
 
   clearTimeout(caseSpinTimer);
   clearTimeout(caseRevealTimer);
-  updateCaseOpening(state, { offset: 0, reveal: false, spinning: false });
+  cancelAnimationFrame(caseAnimationFrame);
+  updateCaseOpening(state, { offset: 0, reveal: false, spinning: true });
   render();
 
-  const track = root.querySelector('.case-roulette__track');
-  if (!track) return;
+  const easeOutCubic = (progress) => 1 - ((1 - progress) ** 3);
 
-  updateCaseOpening(state, { offset: targetOffset, spinning: true });
-  track.classList.remove('is-spinning');
-  track.style.transform = 'translateX(0px)';
+  function step(timestamp) {
+    const elapsed = timestamp - startTime;
+    const progress = Math.min(1, elapsed / animationDuration);
+    const offset = Math.round(targetOffset * easeOutCubic(progress));
 
-  caseSpinTimer = window.setTimeout(() => {
-    requestAnimationFrame(() => {
-      track.classList.add('is-spinning');
-      track.style.transform = `translateX(-${targetOffset}px)`;
-    });
-  }, 60);
+    updateCaseOpening(state, { offset, spinning: progress < 1 });
+    const track = root.querySelector('.case-roulette__track');
+    if (track) {
+      track.style.transform = `translateX(-${offset}px)`;
+    }
 
-  caseRevealTimer = window.setTimeout(() => {
-    updateCaseOpening(state, { reveal: true, spinning: false });
+    if (progress < 1) {
+      caseAnimationFrame = requestAnimationFrame(step);
+      return;
+    }
+
+    updateCaseOpening(state, { offset: targetOffset, reveal: true, spinning: false });
     render();
-  }, 4380);
+  }
+
+  caseAnimationFrame = requestAnimationFrame(step);
 }
 
 async function handleWorkDelivery() {
@@ -287,7 +297,6 @@ root.addEventListener('click', async (event) => {
   if (!action || action === 'noop') return;
 
   let shouldSyncGame = false;
-  let preserveAnimatedCaseFrame = false;
 
   try {
     if (action === 'tab') {
@@ -307,7 +316,10 @@ root.addEventListener('click', async (event) => {
     if (action === 'close-social') state.socialSection = null;
     if (action === 'friend-modal-close') closeFriendModal(state);
     if (action === 'friend-modal-mode') setFriendModalMode(state, button.dataset.mode);
-    if (action === 'case-close-modal') closeCaseOpening(state);
+    if (action === 'case-close-modal') {
+      cancelAnimationFrame(caseAnimationFrame);
+      closeCaseOpening(state);
+    }
     if (action === 'work-open') openWorkSession(state);
     if (action === 'work-close') closeWorkSession(state);
     if (action === 'rest') {
@@ -322,7 +334,6 @@ root.addEventListener('click', async (event) => {
         shouldSyncGame = true;
         render();
         animateCaseOpening();
-        preserveAnimatedCaseFrame = true;
       }
     }
     if (action === 'equip') {
@@ -437,7 +448,6 @@ root.addEventListener('click', async (event) => {
       await syncGameState();
     }
   } catch (error) {
-    preserveAnimatedCaseFrame = false;
     setAuth(state, { error: error.message });
     addNotification(state, error.message);
   }
