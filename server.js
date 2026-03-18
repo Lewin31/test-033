@@ -288,17 +288,9 @@ function pushSocialUpdate() {
     if (!user) continue;
     client.res.write(`event: social_data\ndata: ${JSON.stringify(buildClientPayload(user))}\n\n`);
   }
-  gameState.inventory.push(item);
 }
 
-function isFriends(userId, targetId) {
-  return db.friendRequests.some((request) => (
-    request.status === 'accepted'
-    && ((request.fromUserId === userId && request.toUserId === targetId) || (request.fromUserId === targetId && request.toUserId === userId))
-  ));
-}
-
-function isFriends(userId, targetId) {
+function areUsersFriends(userId, targetId) {
   return db.friendRequests.some((request) => (
     request.status === 'accepted'
     && ((request.fromUserId === userId && request.toUserId === targetId) || (request.fromUserId === targetId && request.toUserId === userId))
@@ -571,7 +563,7 @@ async function handleApi(req, res, pathname) {
 
     if (req.method === 'POST' && pathname === '/api/social/friends/remove') {
       const friendId = String(payload.friendId || '');
-      if (!isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+      if (!areUsersFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
 
       db.friendRequests = db.friendRequests.map((request) => (
         request.status === 'accepted' && (
@@ -599,14 +591,14 @@ async function handleApi(req, res, pathname) {
     if (req.method === 'POST' && pathname === '/api/social/friends/profile') {
       const friendId = String(payload.friendId || '');
       const friend = db.users.find((entry) => entry.id === friendId);
-      if (!friend || !isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+      if (!friend || !areUsersFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
       return sendJson(res, 200, buildFriendProfilePayload(friend));
     }
 
     if (req.method === 'POST' && pathname === '/api/social/messages/thread') {
       const friendId = String(payload.friendId || '');
       const friend = db.users.find((entry) => entry.id === friendId);
-      if (!friend || !isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+      if (!friend || !areUsersFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
       return sendJson(res, 200, {
         friend: getUserPublic(friend),
         messages: getDirectThread(user.id, friendId).map((message) => mapDirectMessage(message, user))
@@ -617,7 +609,7 @@ async function handleApi(req, res, pathname) {
       const friendId = String(payload.friendId || '');
       const friend = db.users.find((entry) => entry.id === friendId);
       const text = String(payload.text || '').trim().slice(0, 240);
-      if (!friend || !isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+      if (!friend || !areUsersFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
       if (!text) return sendJson(res, 400, { error: 'Сообщение пустое.' });
 
       const message = {
@@ -644,7 +636,7 @@ async function handleApi(req, res, pathname) {
     if (req.method === 'POST' && pathname === '/api/social/trades/create') {
       const target = db.users.find((entry) => entry.id === String(payload.toUserId || ''));
       if (!target || target.id === user.id) return sendJson(res, 400, { error: 'Игрок для обмена не найден.' });
-      if (!isFriends(user.id, target.id)) return sendJson(res, 400, { error: 'Обмен можно начать только с другом.' });
+      if (!areUsersFriends(user.id, target.id)) return sendJson(res, 400, { error: 'Обмен можно начать только с другом.' });
       if (tradeUtils.hasOpenTrade(user.id) || tradeUtils.hasOpenTrade(target.id)) return sendJson(res, 409, { error: 'У одного из игроков уже есть активный или ожидающий трейд.' });
 
       db.trades.push({
