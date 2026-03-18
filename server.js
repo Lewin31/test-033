@@ -341,6 +341,20 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
+
+  const fromItems = fromSelections.map((item) => findTradeableItem(fromGame, item.instanceId));
+  const toItems = toSelections.map((item) => findTradeableItem(toGame, item.instanceId));
+  if (fromItems.some((entry) => !entry) || toItems.some((entry) => !entry)) {
+    throw new Error('Один из предметов для обмена больше недоступен.');
+  }
+
+  const transferredFrom = fromSelections.map((item) => removeTradeableItem(fromGame, item.instanceId));
+  const transferredTo = toSelections.map((item) => removeTradeableItem(toGame, item.instanceId));
+  transferredFrom.forEach((item) => addTradeableItem(toGame, item));
+  transferredTo.forEach((item) => addTradeableItem(fromGame, item));
+
+  trade.status = 'completed';
+  trade.updatedAt = new Date().toISOString();
 }
 
 function hasOpenTrade(userId) {
@@ -516,20 +530,35 @@ async function handleApi(req, res, pathname) {
       const target = db.users.find((entry) => entry.username.toLowerCase() === username.toLowerCase());
       if (!target || target.id === user.id) return sendJson(res, 400, { error: 'Игрок не найден.' });
 
-      const exists = db.friendRequests.find((request) => (
+      const openRequest = db.friendRequests.find((request) => (
         (request.fromUserId === user.id && request.toUserId === target.id)
         || (request.fromUserId === target.id && request.toUserId === user.id)
-      ) && request.status !== 'declined');
+      ) && ['pending', 'accepted'].includes(request.status));
 
-      if (exists) return sendJson(res, 409, { error: 'Заявка уже существует.' });
+      if (openRequest) {
+        return sendJson(res, 409, { error: openRequest.status === 'accepted' ? 'Этот игрок уже у тебя в друзьях.' : 'Заявка уже существует.' });
+      }
 
-      db.friendRequests.push({
-        id: crypto.randomUUID(),
-        fromUserId: user.id,
-        toUserId: target.id,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      });
+      const reusableRequest = db.friendRequests.find((request) => (
+        (request.fromUserId === user.id && request.toUserId === target.id)
+        || (request.fromUserId === target.id && request.toUserId === user.id)
+      ) && ['declined', 'removed'].includes(request.status));
+
+      if (reusableRequest) {
+        reusableRequest.fromUserId = user.id;
+        reusableRequest.toUserId = target.id;
+        reusableRequest.status = 'pending';
+        reusableRequest.createdAt = new Date().toISOString();
+      } else {
+        db.friendRequests.push({
+          id: crypto.randomUUID(),
+          fromUserId: user.id,
+          toUserId: target.id,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+      }
+
       saveDb();
       pushSocialUpdate();
       return sendJson(res, 200, buildClientPayload(user));

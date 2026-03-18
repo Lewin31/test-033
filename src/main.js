@@ -97,15 +97,21 @@ function animateCaseOpening() {
   updateCaseOpening(state, { offset: 0, reveal: false, spinning: false });
   render();
 
+  const track = root.querySelector('.case-roulette__track');
+  if (!track) return;
+
+  track.classList.remove('is-spinning');
+  track.style.transform = 'translateX(0px)';
+
   caseSpinTimer = window.setTimeout(() => {
     requestAnimationFrame(() => {
-      updateCaseOpening(state, { offset: targetOffset, spinning: true });
-      render();
+      track.classList.add('is-spinning');
+      track.style.transform = `translateX(-${targetOffset}px)`;
     });
-  }, 80);
+  }, 60);
 
   caseRevealTimer = window.setTimeout(() => {
-    updateCaseOpening(state, { reveal: true });
+    updateCaseOpening(state, { offset: targetOffset, reveal: true, spinning: false });
     render();
   }, 4380);
 }

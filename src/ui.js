@@ -484,7 +484,7 @@ function caseOpeningModal(state) {
         <div class="case-roulette">
           <div class="case-roulette__pointer"></div>
           <div class="case-roulette__viewport">
-            <div class="case-roulette__track ${state.caseOpening.spinning ? 'is-spinning' : ''}" style="transform: translateX(-${state.caseOpening.offset}px)">
+            <div class="case-roulette__track" style="transform: translateX(-${state.caseOpening.offset}px)">
               ${state.caseOpening.strip.map((item) => `
                 <div class="case-roulette__card rarity-${item.rarity}">
                   <span class="gear-icon">${item.icon}</span>
@@ -721,9 +721,9 @@ export function renderApp(root, state) {
                   <div>
                     <p class="section-label">Экипировка</p>
                     <h2>Снаряжение</h2>
-                    <p class="inventory-panel__hint">Компактный обзор персонажа и быстрый доступ к слотам.</p>
+                    <p class="inventory-panel__hint">Отдельные слоты экипировки и быстрый доступ к общей статистике.</p>
                   </div>
-                  <button class="secondary-button" data-action="open-stats">Статистика</button>
+                  <button class="secondary-button inventory-stats-button" data-action="open-stats">Статистика</button>
                 </div>
                 <div class="character-frame">
                   <div class="character-avatar">🧍</div>
