@@ -567,3 +567,342 @@ h1 { margin-bottom: 0; font-size: 28px; }
   color: var(--muted);
   margin-bottom: 0;
 }
+
+.social-card__title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.social-card button:disabled,
+.trade-board__actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+.trade-active-card {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.trade-modal-board {
+  background: transparent;
+  padding: 0;
+}
+
+.trade-session-modal {
+  z-index: 11;
+  background: rgba(5, 8, 13, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.trade-session-modal__content {
+  width: min(1180px, 96vw);
+  max-height: 88vh;
+  padding: 28px;
+}
+
+.trade-window-layout {
+  grid-template-rows: auto 1fr;
+}
+
+.trade-requests-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.trade-board {
+  display: grid;
+  gap: 16px;
+  min-height: 0;
+}
+
+.trade-board__status,
+.trade-board__note {
+  color: var(--muted);
+}
+
+.trade-status-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trade-status-chip {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: #0f1320;
+}
+
+.trade-status-chip.ready {
+  border-color: rgba(50, 210, 150, 0.55);
+  background: rgba(50, 210, 150, 0.12);
+}
+
+.trade-board__shell {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
+  border-radius: 32px;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(11,14,22,0.6));
+}
+
+.trade-board__divider {
+  border-radius: 999px;
+  background: rgba(255,255,255,0.25);
+}
+
+.trade-board__half {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.trade-board__title {
+  text-align: center;
+  font-weight: 700;
+  color: #dce5ff;
+}
+
+.trade-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 18px;
+}
+
+.trade-slot {
+  min-height: 140px;
+  padding: 16px;
+  border-radius: 24px;
+  border: 2px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.03);
+  color: white;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.trade-slot .gear-icon {
+  width: 58px;
+  height: 58px;
+}
+
+.trade-slot__hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.trade-grid--readonly .trade-slot {
+  cursor: default;
+}
+
+.trade-board__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.trade-picker-modal {
+  z-index: 12;
+  background: rgba(5, 8, 13, 0.72);
+}
+
+.trade-picker-modal__content {
+  width: min(860px, 100%);
+}
+
+.trade-picker-list {
+  display: grid;
+  gap: 12px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.trade-picker-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: #0f1320;
+  color: white;
+  text-align: left;
+}
+
+.trade-picker-item small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.trade-picker-clear {
+  margin-top: 16px;
+}
+
+@media (max-width: 1300px) {
+  .trade-active-card,
+  .trade-requests-columns,
+  .trade-status-row,
+  .trade-board__shell,
+  .trade-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trade-board__divider {
+    display: none;
+  }
+}
+
+.topbar-stats--rich {
+  align-items: stretch;
+}
+
+.money-card {
+  min-width: 220px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #1c2740, #34275d 55%, #6f6bff);
+  display: grid;
+  gap: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 18px 36px rgba(52,39,93,0.34);
+}
+
+.money-card__brand {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: rgba(255,255,255,0.76);
+}
+
+.money-card strong {
+  font-size: 28px;
+}
+
+.money-card small,
+.progress-line-card span {
+  color: #c8d3f1;
+}
+
+.progress-card {
+  min-width: 220px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(16, 20, 33, 0.9);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+
+.progress-line-card {
+  display: grid;
+  gap: 6px;
+}
+
+.progress-line {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+
+.progress-line i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #32d296, #6f6bff);
+}
+
+.progress-line-card--exp .progress-line i {
+  background: linear-gradient(90deg, #ff9f43, #ffd166);
+}
+
+.cases-grid {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.case-tile p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.friend-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.friend-action {
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6f6bff, #8f6bff);
+  color: white;
+  box-shadow: 0 10px 20px rgba(111, 107, 255, 0.24);
+}
+
+.friend-action--ghost {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.friend-action--danger {
+  background: linear-gradient(135deg, #ff5c7a, #ff7b54);
+}
+
+.friend-modal {
+  z-index: 10;
+  background: rgba(5, 8, 13, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.friend-modal__content {
+  width: min(1100px, 96vw);
+}
+
+.friend-modal__tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.friend-modal__inventory {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.friend-modal__messages {
+  display: grid;
+  gap: 12px;
+}
+
+.friend-chat-feed {
+  max-height: 52vh;
+}
+
+.chat-message--own {
+  border-color: rgba(111, 107, 255, 0.35);
+  background: rgba(111, 107, 255, 0.12);
+}
+
+@media (max-width: 1300px) {
+  .friend-modal__inventory,
+  .cases-grid {
+    grid-template-columns: 1fr;
+  }
+}
