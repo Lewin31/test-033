@@ -1,5 +1,13 @@
-import { rarityMap } from './data.js';
+import { rarityMap, categoryMeta } from './data.js';
 import { getCollectionStats } from './state.js';
+
+const slotLabels = {
+  head: 'Голова',
+  torso: 'Тело',
+  legs: 'Ноги',
+  feet: 'Обувь',
+  accessory: 'Аксессуар'
+};
 
 function formatMoney(value) {
   return new Intl.NumberFormat('ru-RU').format(value);
@@ -10,35 +18,59 @@ function rarityBadge(rarity) {
   return `<span class="rarity-badge" style="--rarity:${config.color};--rarity-glow:${config.glow}">${config.label}</span>`;
 }
 
-function shopCard(item, category) {
+function renderStats(stats) {
+  return Object.entries(stats)
+    .map(([key, value]) => `<span>${key}: <strong>${value}</strong></span>`)
+    .join('');
+}
+
+function shopCard(item) {
   return `
-    <article class="card rarity-${item.rarity}">
-      <div class="card__top">
-        <div>
-          <p class="card__eyebrow">${category === 'clothing' ? 'Одежда' : category === 'cars' ? 'Машина' : 'Недвижимость'}</p>
-          <h3>${item.name}</h3>
-        </div>
+    <article class="item-tile rarity-${item.rarity}">
+      <div class="item-tile__glow"></div>
+      <div class="item-tile__top">
+        <span class="item-emoji">${item.icon}</span>
         ${rarityBadge(item.rarity)}
       </div>
-      <div class="card__stats">
-        ${Object.entries(item.stats)
-          .map(([key, value]) => `<span>${key}: <strong>${value}</strong></span>`)
-          .join('')}
+      <div class="item-tile__body">
+        <h3>${item.name}</h3>
+        <div class="item-stats">${renderStats(item.stats)}</div>
       </div>
-      <div class="card__footer">
+      <div class="item-tile__footer">
         <strong class="price">$${formatMoney(item.price)}</strong>
-        <button data-action="buy" data-category="${category}" data-id="${item.id}">Купить</button>
+        <button data-action="buy" data-category="${item.category}" data-id="${item.id}">Купить</button>
       </div>
     </article>
   `;
 }
 
-function inventoryCard(item) {
+function inventoryTile(item) {
   return `
-    <button class="inventory-item rarity-${item.rarity}" data-action="equip" data-id="${item.id}">
-      <span>${item.name}</span>
+    <button class="inventory-slot rarity-${item.rarity}" data-action="equip" data-id="${item.id}">
+      <span class="inventory-slot__icon">${item.icon}</span>
+      <span class="inventory-slot__name">${item.name}</span>
       ${rarityBadge(item.rarity)}
     </button>
+  `;
+}
+
+function collectionTile(item) {
+  return `
+    <div class="collection-tile rarity-${item.rarity}">
+      <span class="inventory-slot__icon">${item.icon}</span>
+      <strong>${item.name}</strong>
+      ${rarityBadge(item.rarity)}
+    </div>
+  `;
+}
+
+function equipTile(slotKey, item) {
+  return `
+    <div class="equip-rpg-slot ${item ? `rarity-${item.rarity}` : ''}">
+      <span class="equip-rpg-slot__label">${slotLabels[slotKey]}</span>
+      <span class="equip-rpg-slot__icon">${item?.icon || '✨'}</span>
+      <strong>${item?.name || 'Пусто'}</strong>
+    </div>
   `;
 }
 
@@ -46,6 +78,7 @@ export function renderApp(root, state) {
   const stats = getCollectionStats(state);
   const activeOffers = state.shopOffers[state.shopCategory];
   const secondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
+  const currentShop = categoryMeta[state.shopCategory];
 
   root.innerHTML = `
     <div class="shell">
@@ -88,7 +121,7 @@ export function renderApp(root, state) {
           <section class="panel work-panel">
             <div class="work-card">
               <p class="section-label">Работа</p>
-              <h2>Курьер в мегаполисе</h2>
+              <h2>Курьер в мегаполисе 📦</h2>
               <p>Нажимай на кнопку, выполняй доставку и получай деньги. Каждые 5 действий дают опыт.</p>
               <div class="work-actions">
                 <button class="primary-button" data-action="work">Выйти на смену</button>
@@ -107,59 +140,89 @@ export function renderApp(root, state) {
             <div class="shop-header">
               <div>
                 <p class="section-label">Магазин</p>
-                <h2>Свежий завоз каждые 30 секунд</h2>
+                <h2>Выбери, в какой магазин зайти</h2>
               </div>
               <div class="refresh-box">
                 <span>Следующий завоз через</span>
                 <strong>${secondsLeft} сек.</strong>
               </div>
             </div>
-            <div class="subtabs">
-              ${[
-                ['clothing', 'Одежда'],
-                ['cars', 'Машины'],
-                ['property', 'Недвижка']
-              ].map(([key, label]) => `
-                <button class="subtab ${state.shopCategory === key ? 'active' : ''}" data-action="shop-category" data-category="${key}">${label}</button>
+
+            <div class="shop-selector">
+              ${Object.entries(categoryMeta).map(([key, meta]) => `
+                <button class="store-card ${state.shopCategory === key ? 'active' : ''}" data-action="shop-category" data-category="${key}">
+                  <span class="store-card__icon">${meta.icon}</span>
+                  <strong>${meta.label}</strong>
+                  <small>${meta.description}</small>
+                </button>
               `).join('')}
             </div>
-            <div class="shop-grid">
-              ${activeOffers.map((item) => shopCard(item, state.shopCategory)).join('')}
+
+            <div class="shop-showcase panel-inner">
+              <div class="shop-showcase__header">
+                <div>
+                  <p class="section-label">${currentShop.icon} ${currentShop.label}</p>
+                  <h3>Текущие предметы в магазине</h3>
+                </div>
+                <span class="shop-note">5 квадратных слотов с завозом</span>
+              </div>
+              <div class="shop-grid square-grid">
+                ${activeOffers.map((item) => shopCard(item)).join('')}
+              </div>
             </div>
           </section>
         ` : ''}
 
         ${state.activeTab === 'inventory' ? `
           <section class="panel inventory-panel">
-            <div class="inventory-layout">
-              <div class="equipment-zone">
-                <p class="section-label">Экипировка</p>
-                <div class="character-silhouette">
-                  <div class="silhouette"></div>
-                  <div class="equip-slot head">${state.equipped.head?.name || 'Голова'}</div>
-                  <div class="equip-slot torso">${state.equipped.torso?.name || 'Тело'}</div>
-                  <div class="equip-slot accessory">${state.equipped.accessory?.name || 'Аксессуар'}</div>
-                  <div class="equip-slot legs">${state.equipped.legs?.name || 'Ноги'}</div>
-                  <div class="equip-slot feet">${state.equipped.feet?.name || 'Обувь'}</div>
-                </div>
-              </div>
-              <div class="inventory-zone">
-                <div class="inventory-header">
+            <div class="inventory-rpg-layout">
+              <div class="equipment-panel panel-inner">
+                <div class="equipment-panel__header">
                   <div>
-                    <p class="section-label">Инвентарь</p>
-                    <h2>Блоки с вещами и коллекцией</h2>
+                    <p class="section-label">Экипировка</p>
+                    <h2>RPG-снаряжение</h2>
                   </div>
                   <button class="secondary-button" data-action="open-stats">Статистика</button>
                 </div>
-                <div class="inventory-grid">
+                <div class="character-frame">
+                  <div class="character-avatar">🧍</div>
+                  <div class="equip-rpg-grid">
+                    ${Object.entries(slotLabels).map(([slotKey]) => equipTile(slotKey, state.equipped[slotKey])).join('')}
+                  </div>
+                </div>
+              </div>
+
+              <div class="backpack-panel panel-inner">
+                <div class="inventory-header">
+                  <div>
+                    <p class="section-label">Рюкзак</p>
+                    <h2>Квадратные предметы</h2>
+                  </div>
+                </div>
+                <div class="inventory-grid square-grid">
                   ${state.inventory.length
-                    ? state.inventory.map((item) => inventoryCard(item)).join('')
+                    ? state.inventory.map((item) => inventoryTile(item)).join('')
                     : '<div class="empty-state">Пока пусто. Купи одежду в магазине.</div>'}
                 </div>
                 <div class="collection-row">
                   <div class="mini-card"><span>Одежда</span><strong>${stats.wardrobe}/${stats.fullCatalog.clothing}</strong></div>
                   <div class="mini-card"><span>Машины</span><strong>${stats.cars}/${stats.fullCatalog.cars}</strong></div>
                   <div class="mini-card"><span>Недвижка</span><strong>${stats.property}/${stats.fullCatalog.property}</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="owned-sections">
+              <div class="panel-inner">
+                <p class="section-label">🚗 Гараж</p>
+                <div class="collection-grid">
+                  ${state.ownedCars.length ? state.ownedCars.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Пока нет машин.</div>'}
+                </div>
+              </div>
+              <div class="panel-inner">
+                <p class="section-label">🏠 Недвижимость</p>
+                <div class="collection-grid">
+                  ${state.ownedProperty.length ? state.ownedProperty.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Пока нет недвижимости.</div>'}
                 </div>
               </div>
             </div>

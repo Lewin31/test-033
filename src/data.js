@@ -6,13 +6,22 @@ export const rarityMap = {
   mythic: { label: 'Мифический', color: '#ff9f43', glow: 'rgba(255, 159, 67, 0.4)' }
 };
 
+export const categoryMeta = {
+  clothing: { label: 'Бутик одежды', icon: '🧥', description: 'Шмотки, аксессуары и бонус к заработку' },
+  cars: { label: 'Автосалон', icon: '🚗', description: 'Машины для стиля, скорости и престижа' },
+  property: { label: 'Агентство', icon: '🏠', description: 'Квартиры, дома и элитная недвижка' }
+};
+
 const clothingPrefixes = ['Городская', 'Неоновая', 'Премиальная', 'Уличная', 'Ночная', 'Зимняя', 'Скоростная', 'Клубная', 'Деловая', 'Люксовая'];
 const clothingTypes = ['куртка', 'футболка', 'худи', 'рубашка', 'пальто', 'кепка', 'кроссовки', 'джинсы', 'ботинки', 'часы'];
+const clothingIcons = ['🧥', '👕', '🧢', '👔', '🧣', '🧤', '👟', '👖', '🥾', '⌚'];
 const carBrands = ['Lada', 'Toyota', 'BMW', 'Mercedes', 'Audi', 'Honda', 'Nissan', 'Hyundai', 'Porsche', 'Ford'];
 const carModels = ['Spark', 'Nova', 'Pulse', 'Drift', 'Eclipse', 'Titan', 'Falcon', 'Storm', 'Vision', 'Prime'];
+const carIcons = ['🚗', '🚙', '🏎️', '🚘', '🚓'];
 const propertyPrefixes = ['Уютная', 'Современная', 'Элитная', 'Панорамная', 'Загородная', 'Центральная', 'Клубная', 'Семейная', 'Тихая', 'Престижная'];
 const propertyTypes = ['студия', 'квартира', 'дача', 'таунхаус', 'дом', 'пентхаус', 'вилла', 'лофт', 'коттедж', 'резиденция'];
-const rarities = ['common', 'uncommon', 'rare', 'epic', 'mythic'];
+const propertyIcons = ['🏠', '🏡', '🏢', '🏘️', '🏛️'];
+const equipmentSlots = ['head', 'torso', 'legs', 'feet', 'accessory'];
 
 function rarityByIndex(index) {
   if (index % 19 === 0) return 'mythic';
@@ -35,10 +44,11 @@ export const clothingCatalog = Array.from({ length: 100 }, (_, index) => {
   return {
     id: `cloth-${index + 1}`,
     category: 'clothing',
+    icon: clothingIcons[index % clothingIcons.length],
     name: `${prefix} ${type} ${index + 1}`,
     rarity,
     price: priceByRarity(1200 + index * 55, rarity),
-    slot: ['head', 'torso', 'legs', 'feet', 'accessory'][index % 5],
+    slot: equipmentSlots[index % equipmentSlots.length],
     stats: {
       style: 2 + (index % 8),
       comfort: 1 + (index % 6),
@@ -52,6 +62,7 @@ export const carCatalog = Array.from({ length: 50 }, (_, index) => {
   return {
     id: `car-${index + 1}`,
     category: 'cars',
+    icon: carIcons[index % carIcons.length],
     name: `${carBrands[index % carBrands.length]} ${carModels[index % carModels.length]} ${index + 1}`,
     rarity,
     price: priceByRarity(18000 + index * 3500, rarity),
@@ -68,6 +79,7 @@ export const propertyCatalog = Array.from({ length: 20 }, (_, index) => {
   return {
     id: `property-${index + 1}`,
     category: 'property',
+    icon: propertyIcons[index % propertyIcons.length],
     name: `${propertyPrefixes[index % propertyPrefixes.length]} ${propertyTypes[index % propertyTypes.length]} ${index + 1}`,
     rarity,
     price: priceByRarity(55000 + index * 15000, rarity),
