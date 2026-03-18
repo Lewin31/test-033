@@ -7,6 +7,7 @@ import {
   refreshShop,
   ensureFreshShop,
   buyItem,
+  openCase,
   equipItem,
   unequipItem,
   updateOnlineStatus,
@@ -18,7 +19,12 @@ import {
   applyGameState,
   extractGameState,
   openTradePicker,
-  closeTradePicker
+  closeTradePicker,
+  openFriendModal,
+  closeFriendModal,
+  setFriendModalMode,
+  setFriendMessages,
+  appendFriendMessage
 } from './state.js';
 
 const state = loadState();
@@ -127,6 +133,14 @@ function connectSocialEvents() {
     render();
   });
 
+  events.addEventListener('direct_message', (event) => {
+    const payload = JSON.parse(event.data);
+    if (state.friendModal.open && state.friendModal.friend?.id === payload.friendId) {
+      appendFriendMessage(state, payload.message);
+    }
+    render();
+  });
+
   events.addEventListener('social_data', (event) => {
     const payload = JSON.parse(event.data);
     applyServerPayload(payload);
@@ -181,6 +195,8 @@ root.addEventListener('click', async (event) => {
       await refreshSocialData();
     }
     if (action === 'close-social') state.socialSection = null;
+    if (action === 'friend-modal-close') closeFriendModal(state);
+    if (action === 'friend-modal-mode') setFriendModalMode(state, button.dataset.mode);
     if (action === 'work') {
       performWork(state);
       shouldSyncGame = true;
@@ -191,6 +207,9 @@ root.addEventListener('click', async (event) => {
     }
     if (action === 'buy') {
       shouldSyncGame = buyItem(state, button.dataset.id, button.dataset.category) || shouldSyncGame;
+    }
+    if (action === 'open-case') {
+      shouldSyncGame = Boolean(openCase(state, button.dataset.id)) || shouldSyncGame;
     }
     if (action === 'equip') {
       shouldSyncGame = equipItem(state, button.dataset.id) || shouldSyncGame;
@@ -213,6 +232,29 @@ root.addEventListener('click', async (event) => {
         body: { requestId: button.dataset.id, accept: action === 'friend-accept' }
       });
       applyServerPayload(payload);
+    }
+    if (action === 'friend-view-inventory') {
+      const payload = await api('/api/social/friends/profile', {
+        method: 'POST',
+        body: { friendId: button.dataset.friendId }
+      });
+      openFriendModal(state, { mode: 'inventory', friend: payload.friend, gameState: payload.gameState, messages: state.friendModal.friend?.id === payload.friend.id ? state.friendModal.messages : [] });
+    }
+    if (action === 'friend-open-messages') {
+      const payload = await api('/api/social/messages/thread', {
+        method: 'POST',
+        body: { friendId: button.dataset.friendId }
+      });
+      openFriendModal(state, { mode: 'messages', friend: payload.friend, gameState: state.friendModal.friend?.id === payload.friend.id ? state.friendModal.gameState : null, messages: payload.messages });
+    }
+    if (action === 'friend-remove') {
+      const payload = await api('/api/social/friends/remove', {
+        method: 'POST',
+        body: { friendId: button.dataset.friendId }
+      });
+      applyServerPayload(payload);
+      if (state.friendModal.friend?.id === button.dataset.friendId) closeFriendModal(state);
+      addNotification(state, 'Друг удалён из списка.');
     }
     if (action === 'trade-request') {
       const payload = await api('/api/social/trades/create', {
@@ -318,6 +360,17 @@ root.addEventListener('submit', async (event) => {
       const input = form.querySelector('input[name="friend_username"]');
       const payload = await api('/api/social/friends/request', { method: 'POST', body: { username: input.value.trim() } });
       applyServerPayload(payload);
+      input.value = '';
+    }
+
+    if (form.dataset.role === 'dm-form') {
+      const input = form.querySelector('input[name="dm_text"]');
+      const payload = await api('/api/social/messages/send', {
+        method: 'POST',
+        body: { friendId: state.friendModal.friend?.id, text: input.value.trim() }
+      });
+      setFriendMessages(state, payload.messages);
+      setFriendModalMode(state, 'messages');
       input.value = '';
     }
   } catch (error) {

@@ -29,7 +29,8 @@ const defaultDb = {
   sessions: [],
   friendRequests: [],
   trades: [],
-  chatMessages: []
+  chatMessages: [],
+  directMessages: []
 };
 
 function ensureDb() {
@@ -296,6 +297,52 @@ function isFriends(userId, targetId) {
   ));
 }
 
+function buildFriendProfilePayload(friend) {
+  const gameState = ensureUserGameState(friend);
+  return {
+    friend: getUserPublic(friend),
+    gameState: {
+      equipped: sanitizeEquipped(gameState.equipped),
+      inventory: sanitizeCollection(gameState.inventory),
+      ownedCars: sanitizeCollection(gameState.ownedCars),
+      ownedProperty: sanitizeCollection(gameState.ownedProperty)
+    }
+  };
+}
+
+function mapDirectMessage(message, user) {
+  const author = db.users.find((entry) => entry.id === message.fromUserId);
+  return {
+    id: message.id,
+    text: message.text,
+    createdAt: message.createdAt,
+    fromUserId: message.fromUserId,
+    toUserId: message.toUserId,
+    own: message.fromUserId === user.id,
+    author: getUserPublic(author)
+  };
+}
+
+function getDirectThread(userId, friendId) {
+  return db.directMessages
+    .filter((message) => (
+      (message.fromUserId === userId && message.toUserId === friendId)
+      || (message.fromUserId === friendId && message.toUserId === userId)
+    ))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function broadcastToUsers(userIds, event, payload) {
+  const targets = new Set(userIds);
+  const chunk = `event: ${event}
+data: ${JSON.stringify(payload)}
+
+`;
+  for (const client of sseClients) {
+    if (targets.has(client.userId)) client.res.write(chunk);
+  }
+}
+
 function hasOpenTrade(userId) {
   return db.trades.some((trade) => (trade.fromUserId === userId || trade.toUserId === userId) && ['pending', 'active'].includes(trade.status));
 }
@@ -495,6 +542,78 @@ async function handleApi(req, res, pathname) {
       saveDb();
       pushSocialUpdate();
       return sendJson(res, 200, buildClientPayload(user));
+    }
+
+    if (req.method === 'POST' && pathname === '/api/social/friends/remove') {
+      const friendId = String(payload.friendId || '');
+      if (!isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+
+      db.friendRequests = db.friendRequests.map((request) => (
+        request.status === 'accepted' && (
+          (request.fromUserId === user.id && request.toUserId === friendId)
+          || (request.fromUserId === friendId && request.toUserId === user.id)
+        )
+          ? { ...request, status: 'removed' }
+          : request
+      ));
+
+      db.trades = db.trades.map((trade) => (
+        ['pending', 'active'].includes(trade.status) && (
+          (trade.fromUserId === user.id && trade.toUserId === friendId)
+          || (trade.fromUserId === friendId && trade.toUserId === user.id)
+        )
+          ? { ...trade, status: 'cancelled', updatedAt: new Date().toISOString() }
+          : trade
+      ));
+
+      saveDb();
+      pushSocialUpdate();
+      return sendJson(res, 200, buildClientPayload(user));
+    }
+
+    if (req.method === 'POST' && pathname === '/api/social/friends/profile') {
+      const friendId = String(payload.friendId || '');
+      const friend = db.users.find((entry) => entry.id === friendId);
+      if (!friend || !isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+      return sendJson(res, 200, buildFriendProfilePayload(friend));
+    }
+
+    if (req.method === 'POST' && pathname === '/api/social/messages/thread') {
+      const friendId = String(payload.friendId || '');
+      const friend = db.users.find((entry) => entry.id === friendId);
+      if (!friend || !isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+      return sendJson(res, 200, {
+        friend: getUserPublic(friend),
+        messages: getDirectThread(user.id, friendId).map((message) => mapDirectMessage(message, user))
+      });
+    }
+
+    if (req.method === 'POST' && pathname === '/api/social/messages/send') {
+      const friendId = String(payload.friendId || '');
+      const friend = db.users.find((entry) => entry.id === friendId);
+      const text = String(payload.text || '').trim().slice(0, 240);
+      if (!friend || !isFriends(user.id, friendId)) return sendJson(res, 404, { error: 'Друг не найден.' });
+      if (!text) return sendJson(res, 400, { error: 'Сообщение пустое.' });
+
+      const message = {
+        id: crypto.randomUUID(),
+        fromUserId: user.id,
+        toUserId: friendId,
+        text,
+        createdAt: new Date().toISOString()
+      };
+
+      db.directMessages = [...db.directMessages.slice(-499), message];
+      saveDb();
+      const mappedForSender = mapDirectMessage(message, user);
+      const mappedForFriend = mapDirectMessage(message, friend);
+      broadcastToUsers([user.id], 'direct_message', { friendId, message: mappedForSender });
+      broadcastToUsers([friendId], 'direct_message', { friendId: user.id, message: mappedForFriend });
+      pushSocialUpdate();
+      return sendJson(res, 200, {
+        friend: getUserPublic(friend),
+        messages: getDirectThread(user.id, friendId).map((entry) => mapDirectMessage(entry, user))
+      });
     }
 
     if (req.method === 'POST' && pathname === '/api/social/trades/create') {

@@ -1,4 +1,4 @@
-import { getRandomItems, catalogs } from './data.js';
+import { getRandomItems, catalogs, caseCatalog, getCaseRewards } from './data.js';
 
 const STORAGE_KEY = 'life-sim-save-v3';
 const EQUIP_SLOTS = ['head', 'torso', 'legs', 'feet', 'accessory'];
@@ -55,6 +55,13 @@ const defaultState = {
   shopCategory: null,
   socialSection: null,
   tradeModalOpen: false,
+  friendModal: {
+    open: false,
+    mode: 'inventory',
+    friend: null,
+    gameState: null,
+    messages: []
+  },
   tradePicker: {
     slotIndex: null
   },
@@ -94,6 +101,7 @@ function normalizeSavedState(saved = {}) {
     ...extractGameState({ ...structuredClone(defaultState), ...saved }),
     socialSection: null,
     tradeModalOpen: false,
+    friendModal: structuredClone(defaultState).friendModal,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: structuredClone(defaultState).online,
     social: structuredClone(defaultState).social,
@@ -117,6 +125,7 @@ export function saveState(state) {
     ...state,
     socialSection: null,
     tradeModalOpen: false,
+    friendModal: structuredClone(defaultState).friendModal,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: undefined,
     social: undefined,
@@ -197,6 +206,10 @@ export function ensureFreshShop(state) {
   return true;
 }
 
+export function getExpProgress(state) {
+  return state.exp % 100;
+}
+
 export function refreshShop(state) {
   state.shopOffers = {
     clothing: getRandomItems('clothing', 5),
@@ -205,6 +218,23 @@ export function refreshShop(state) {
   };
   state.shopRefreshAt = Date.now() + 30000;
   addNotification(state, 'В магазине новый завоз предметов.');
+}
+
+export function openCase(state, caseId) {
+  const caseItem = caseCatalog.find((entry) => entry.id === caseId);
+  if (!caseItem) return null;
+  if (state.money < caseItem.price) {
+    addNotification(state, `Недостаточно денег для открытия ${caseItem.name}.`);
+    return null;
+  }
+
+  const rewards = getCaseRewards(caseId);
+  if (!rewards.length) return null;
+  const reward = normalizeItem(rewards[Math.floor(Math.random() * rewards.length)]);
+  state.money -= caseItem.price;
+  state.ownedCars.unshift(reward);
+  addNotification(state, `${caseItem.name}: тебе выпала ${reward.name}.`);
+  return reward;
 }
 
 export function buyItem(state, itemId, category) {
@@ -278,6 +308,7 @@ export function setSocialData(state, socialPatch) {
 export function resetSocialState(state) {
   state.social = structuredClone(defaultState).social;
   state.tradeModalOpen = false;
+  state.friendModal = structuredClone(defaultState).friendModal;
   state.tradePicker = structuredClone(defaultState).tradePicker;
   state.online.chatMessages = [];
 }
@@ -316,4 +347,31 @@ export function getCollectionStats(state) {
       property: catalogs.property.length
     }
   };
+}
+
+
+export function openFriendModal(state, { mode = 'inventory', friend = null, gameState = null, messages = [] } = {}) {
+  state.friendModal = {
+    open: true,
+    mode,
+    friend,
+    gameState,
+    messages
+  };
+}
+
+export function closeFriendModal(state) {
+  state.friendModal = structuredClone(defaultState).friendModal;
+}
+
+export function setFriendModalMode(state, mode) {
+  state.friendModal.mode = mode;
+}
+
+export function setFriendMessages(state, messages) {
+  state.friendModal.messages = messages;
+}
+
+export function appendFriendMessage(state, message) {
+  state.friendModal.messages = [...state.friendModal.messages, message].slice(-80);
 }
