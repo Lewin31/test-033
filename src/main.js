@@ -35,6 +35,20 @@ import {
 
 const state = loadState();
 const root = document.getElementById('app');
+
+function renderFatalError(error) {
+  if (!root) return;
+  root.innerHTML = `
+    <div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#0b0e16;color:#f3f7ff;font-family:Inter,system-ui,sans-serif;">
+      <div style="max-width:720px;padding:24px;border:1px solid rgba(255,255,255,0.12);border-radius:24px;background:#151926;">
+        <p style="margin:0 0 8px;color:#9db0ff;text-transform:uppercase;letter-spacing:.14em;font-size:12px;">Life Sim</p>
+        <h1 style="margin:0 0 12px;font-size:28px;">Ошибка запуска интерфейса</h1>
+        <p style="margin:0 0 12px;color:#cfd8ec;line-height:1.6;">Приложение не смогло отрисоваться полностью. Попробуй обновить страницу. Если ошибка повторится — очисти локальное хранилище сайта.</p>
+        <pre style="margin:0;white-space:pre-wrap;color:#ffb4c1;">${String(error?.message || error)}</pre>
+      </div>
+    </div>
+  `;
+}
 let events;
 let caseRevealTimer;
 let caseSpinTimer;
@@ -50,8 +64,14 @@ function schedulePersist() {
 }
 
 function render() {
-  renderApp(root, state);
-  schedulePersist();
+  if (!root) throw new Error('Root #app not found');
+  try {
+    renderApp(root, state);
+    schedulePersist();
+  } catch (error) {
+    renderFatalError(error);
+    throw error;
+  }
 }
 
 async function api(path, { method = 'GET', body } = {}) {
@@ -598,4 +618,7 @@ async function bootstrap() {
   render();
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error(error);
+  renderFatalError(error);
+});

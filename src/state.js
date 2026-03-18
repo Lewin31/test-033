@@ -3,6 +3,11 @@ import { getRandomItems, catalogs, caseCatalog, getCaseRewards } from './data.js
 const STORAGE_KEY = 'life-sim-save-v3';
 const EQUIP_SLOTS = ['head', 'torso', 'legs', 'feet', 'accessory'];
 
+function cloneValue(value) {
+  if (typeof globalThis.structuredClone === 'function') return globalThis.structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
+}
+
 function createInstanceId(itemId = 'item') {
   return `${itemId}-${globalThis.crypto?.randomUUID?.() || Math.random().toString(16).slice(2)}`;
 }
@@ -113,29 +118,29 @@ const defaultState = {
 
 function normalizeSavedState(saved = {}) {
   return {
-    ...structuredClone(defaultState),
+    ...cloneValue(defaultState),
     ...saved,
-    ...extractGameState({ ...structuredClone(defaultState), ...saved }),
+    ...extractGameState({ ...cloneValue(defaultState), ...saved }),
     socialSection: null,
     tradeModalOpen: false,
-    friendModal: structuredClone(defaultState).friendModal,
-    workSession: structuredClone(defaultState).workSession,
-    caseOpening: structuredClone(defaultState).caseOpening,
-    tradePicker: structuredClone(defaultState).tradePicker,
-    online: structuredClone(defaultState).online,
-    social: structuredClone(defaultState).social,
-    auth: { ...structuredClone(defaultState).auth, ...(saved.auth || {}) },
-    shopOffers: { ...structuredClone(defaultState).shopOffers, ...(saved.shopOffers || {}) }
+    friendModal: cloneValue(defaultState).friendModal,
+    workSession: cloneValue(defaultState).workSession,
+    caseOpening: cloneValue(defaultState).caseOpening,
+    tradePicker: cloneValue(defaultState).tradePicker,
+    online: cloneValue(defaultState).online,
+    social: cloneValue(defaultState).social,
+    auth: { ...cloneValue(defaultState).auth, ...(saved.auth || {}) },
+    shopOffers: { ...cloneValue(defaultState).shopOffers, ...(saved.shopOffers || {}) }
   };
 }
 
 export function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return structuredClone(defaultState);
+    if (!raw) return cloneValue(defaultState);
     return normalizeSavedState(JSON.parse(raw));
   } catch {
-    return structuredClone(defaultState);
+    return cloneValue(defaultState);
   }
 }
 
@@ -144,10 +149,10 @@ export function saveState(state) {
     ...state,
     socialSection: null,
     tradeModalOpen: false,
-    friendModal: structuredClone(defaultState).friendModal,
-    workSession: structuredClone(defaultState).workSession,
-    caseOpening: structuredClone(defaultState).caseOpening,
-    tradePicker: structuredClone(defaultState).tradePicker,
+    friendModal: cloneValue(defaultState).friendModal,
+    workSession: cloneValue(defaultState).workSession,
+    caseOpening: cloneValue(defaultState).caseOpening,
+    tradePicker: cloneValue(defaultState).tradePicker,
     online: undefined,
     social: undefined,
     auth: { token: state.auth.token, user: state.auth.user, error: '' }
@@ -347,11 +352,11 @@ export function setSocialData(state, socialPatch) {
 }
 
 export function resetSocialState(state) {
-  state.social = structuredClone(defaultState).social;
+  state.social = cloneValue(defaultState).social;
   state.tradeModalOpen = false;
-  state.friendModal = structuredClone(defaultState).friendModal;
-  state.caseOpening = structuredClone(defaultState).caseOpening;
-  state.tradePicker = structuredClone(defaultState).tradePicker;
+  state.friendModal = cloneValue(defaultState).friendModal;
+  state.caseOpening = cloneValue(defaultState).caseOpening;
+  state.tradePicker = cloneValue(defaultState).tradePicker;
   state.online.chatMessages = [];
 }
 
@@ -374,7 +379,7 @@ export function openWorkSession(state) {
 
 export function closeWorkSession(state) {
   state.workSession = {
-    ...structuredClone(defaultState).workSession,
+    ...cloneValue(defaultState).workSession,
     open: false
   };
 }
@@ -433,7 +438,7 @@ export function openFriendModal(state, { mode = 'inventory', friend = null, game
 }
 
 export function closeFriendModal(state) {
-  state.friendModal = structuredClone(defaultState).friendModal;
+  state.friendModal = cloneValue(defaultState).friendModal;
 }
 
 export function setFriendModalMode(state, mode) {
@@ -457,7 +462,7 @@ export function updateCaseOpening(state, patch) {
 }
 
 export function closeCaseOpening(state) {
-  state.caseOpening = structuredClone(defaultState).caseOpening;
+  state.caseOpening = cloneValue(defaultState).caseOpening;
 }
 
 export function setInventorySection(state, section) {
