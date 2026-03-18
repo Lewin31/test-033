@@ -7,6 +7,7 @@ import {
   refreshShop,
   ensureFreshShop,
   buyItem,
+  openCase,
   equipItem,
   unequipItem,
   updateOnlineStatus,
@@ -14,12 +15,24 @@ import {
   setAuth,
   setSocialData,
   resetSocialState,
-  addNotification
+  addNotification,
+  applyGameState,
+  extractGameState,
+  openTradePicker,
+  closeTradePicker,
+  openFriendModal,
+  closeFriendModal,
+  setFriendModalMode,
+  setFriendMessages,
+  appendFriendMessage,
+  updateCaseOpening,
+  closeCaseOpening
 } from './state.js';
 
 const state = loadState();
 const root = document.getElementById('app');
 let events;
+let lastShopSecondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
 
 function render() {
   renderApp(root, state);
@@ -39,6 +52,58 @@ async function api(path, { method = 'GET', body } = {}) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'Request failed');
   return payload;
+}
+
+function applyServerPayload(payload) {
+  const previousActiveTradeId = state.social.activeTrade?.id || '';
+
+  if (payload.gameState) {
+    applyGameState(state, payload.gameState);
+  }
+
+  if (payload.social) {
+    setSocialData(state, payload.social);
+    updateOnlineStatus(state, {
+      onlineCount: payload.social.onlineCount,
+      chatMessages: payload.social.chatMessages
+    });
+
+    const nextActiveTradeId = payload.social.activeTrade?.id || '';
+    if (nextActiveTradeId && nextActiveTradeId !== previousActiveTradeId) {
+      state.tradeModalOpen = true;
+    }
+    if (!nextActiveTradeId) {
+      state.tradeModalOpen = false;
+      closeTradePicker(state);
+    }
+  }
+}
+
+
+function animateCaseOpening() {
+  const rewardIndex = 22;
+  const cardWidth = 172;
+  const viewportCenterOffset = 320;
+  const targetOffset = rewardIndex * cardWidth - viewportCenterOffset;
+
+  requestAnimationFrame(() => {
+    updateCaseOpening(state, { offset: targetOffset });
+    render();
+  });
+
+  setTimeout(() => {
+    updateCaseOpening(state, { reveal: true });
+    render();
+  }, 4200);
+}
+
+async function syncGameState() {
+  if (!state.auth.token) return;
+  const payload = await api('/api/game/sync', {
+    method: 'POST',
+    body: { gameState: extractGameState(state) }
+  });
+  applyServerPayload(payload);
 }
 
 function disconnectEvents() {
@@ -88,13 +153,17 @@ function connectSocialEvents() {
     render();
   });
 
+  events.addEventListener('direct_message', (event) => {
+    const payload = JSON.parse(event.data);
+    if (state.friendModal.open && state.friendModal.friend?.id === payload.friendId) {
+      appendFriendMessage(state, payload.message);
+    }
+    render();
+  });
+
   events.addEventListener('social_data', (event) => {
     const payload = JSON.parse(event.data);
-    setSocialData(state, payload);
-    updateOnlineStatus(state, {
-      onlineCount: payload.onlineCount,
-      chatMessages: payload.chatMessages
-    });
+    applyServerPayload(payload);
     render();
   });
 }
@@ -104,11 +173,7 @@ async function restoreSession() {
   try {
     const payload = await api('/api/auth/session');
     setAuth(state, { token: payload.token, user: payload.user, error: '' });
-    setSocialData(state, payload.social);
-    updateOnlineStatus(state, {
-      onlineCount: payload.social.onlineCount,
-      chatMessages: payload.social.chatMessages
-    });
+    applyServerPayload(payload);
   } catch {
     setAuth(state, { token: '', user: null, error: '' });
     resetSocialState(state);
@@ -119,11 +184,7 @@ async function refreshSocialData() {
   if (!state.auth.token) return;
   try {
     const payload = await api('/api/social/data');
-    setSocialData(state, payload);
-    updateOnlineStatus(state, {
-      onlineCount: payload.onlineCount,
-      chatMessages: payload.chatMessages
-    });
+    applyServerPayload(payload);
   } catch (error) {
     addNotification(state, error.message);
   }
@@ -134,7 +195,9 @@ root.addEventListener('click', async (event) => {
   if (!button) return;
 
   const { action } = button.dataset;
-  if (action === 'noop') return;
+  if (!action || action === 'noop') return;
+
+  let shouldSyncGame = false;
 
   try {
     if (action === 'tab') {
@@ -152,11 +215,34 @@ root.addEventListener('click', async (event) => {
       await refreshSocialData();
     }
     if (action === 'close-social') state.socialSection = null;
-    if (action === 'work') performWork(state);
-    if (action === 'rest') restoreEnergy(state);
-    if (action === 'buy') buyItem(state, button.dataset.id, button.dataset.category);
-    if (action === 'equip') equipItem(state, button.dataset.id);
-    if (action === 'unequip') unequipItem(state, button.dataset.slot);
+    if (action === 'friend-modal-close') closeFriendModal(state);
+    if (action === 'friend-modal-mode') setFriendModalMode(state, button.dataset.mode);
+    if (action === 'case-close-modal') closeCaseOpening(state);
+    if (action === 'work') {
+      performWork(state);
+      shouldSyncGame = true;
+    }
+    if (action === 'rest') {
+      restoreEnergy(state);
+      shouldSyncGame = true;
+    }
+    if (action === 'buy') {
+      shouldSyncGame = buyItem(state, button.dataset.id, button.dataset.category) || shouldSyncGame;
+    }
+    if (action === 'open-case') {
+      const reward = openCase(state, button.dataset.id);
+      if (reward) {
+        shouldSyncGame = true;
+        render();
+        animateCaseOpening();
+      }
+    }
+    if (action === 'equip') {
+      shouldSyncGame = equipItem(state, button.dataset.id) || shouldSyncGame;
+    }
+    if (action === 'unequip') {
+      shouldSyncGame = unequipItem(state, button.dataset.slot) || shouldSyncGame;
+    }
     if (action === 'open-stats') state.showStats = true;
     if (action === 'close-stats') state.showStats = false;
     if (action === 'logout') {
@@ -171,18 +257,99 @@ root.addEventListener('click', async (event) => {
         method: 'POST',
         body: { requestId: button.dataset.id, accept: action === 'friend-accept' }
       });
-      setSocialData(state, payload);
-      updateOnlineStatus(state, { onlineCount: payload.onlineCount, chatMessages: payload.chatMessages });
+      applyServerPayload(payload);
+    }
+    if (action === 'friend-view-inventory') {
+      const payload = await api('/api/social/friends/profile', {
+        method: 'POST',
+        body: { friendId: button.dataset.friendId }
+      });
+      openFriendModal(state, { mode: 'inventory', friend: payload.friend, gameState: payload.gameState, messages: state.friendModal.friend?.id === payload.friend.id ? state.friendModal.messages : [] });
+    }
+    if (action === 'friend-open-messages') {
+      const payload = await api('/api/social/messages/thread', {
+        method: 'POST',
+        body: { friendId: button.dataset.friendId }
+      });
+      openFriendModal(state, { mode: 'messages', friend: payload.friend, gameState: state.friendModal.friend?.id === payload.friend.id ? state.friendModal.gameState : null, messages: payload.messages });
+    }
+    if (action === 'friend-remove') {
+      const payload = await api('/api/social/friends/remove', {
+        method: 'POST',
+        body: { friendId: button.dataset.friendId }
+      });
+      applyServerPayload(payload);
+      if (state.friendModal.friend?.id === button.dataset.friendId) closeFriendModal(state);
+      addNotification(state, 'Друг удалён из списка.');
+    }
+    if (action === 'trade-request') {
+      const payload = await api('/api/social/trades/create', {
+        method: 'POST',
+        body: { toUserId: button.dataset.userId }
+      });
+      applyServerPayload(payload);
+      state.socialSection = 'trade';
+      addNotification(state, 'Запрос на обмен отправлен.');
     }
     if (action === 'trade-accept' || action === 'trade-decline') {
       const payload = await api('/api/social/trades/respond', {
         method: 'POST',
         body: { tradeId: button.dataset.id, accept: action === 'trade-accept' }
       });
-      setSocialData(state, payload);
-      updateOnlineStatus(state, { onlineCount: payload.onlineCount, chatMessages: payload.chatMessages });
+      applyServerPayload(payload);
+      state.socialSection = 'trade';
+    }
+    if (action === 'trade-open-modal') {
+      state.tradeModalOpen = true;
+      state.socialSection = 'trade';
+    }
+    if (action === 'trade-close-modal') {
+      state.tradeModalOpen = false;
+      closeTradePicker(state);
+    }
+    if (action === 'trade-open-slot') {
+      state.tradeModalOpen = true;
+      openTradePicker(state, Number(button.dataset.slot));
+    }
+    if (action === 'trade-close-picker') {
+      closeTradePicker(state);
+    }
+    if (action === 'trade-select-item' || action === 'trade-clear-slot') {
+      const payload = await api('/api/social/trades/select', {
+        method: 'POST',
+        body: {
+          tradeId: state.social.activeTrade?.id,
+          slotIndex: state.tradePicker.slotIndex,
+          itemInstanceId: action === 'trade-clear-slot' ? '' : button.dataset.instanceId
+        }
+      });
+      applyServerPayload(payload);
+      closeTradePicker(state);
+      state.socialSection = 'trade';
+    }
+    if (action === 'trade-confirm') {
+      const payload = await api('/api/social/trades/confirm', {
+        method: 'POST',
+        body: { tradeId: state.social.activeTrade?.id }
+      });
+      applyServerPayload(payload);
+      state.socialSection = 'trade';
+    }
+    if (action === 'trade-cancel') {
+      const payload = await api('/api/social/trades/cancel', {
+        method: 'POST',
+        body: { tradeId: state.social.activeTrade?.id }
+      });
+      applyServerPayload(payload);
+      closeTradePicker(state);
+      state.socialSection = 'trade';
+    }
+
+    if (shouldSyncGame) {
+      await syncGameState();
     }
   } catch (error) {
+    setAuth(state, { error: error.message });
     addNotification(state, error.message);
   }
 
@@ -201,8 +368,7 @@ root.addEventListener('submit', async (event) => {
       const endpoint = form.dataset.role === 'register-form' ? '/api/auth/register' : '/api/auth/login';
       const payload = await api(endpoint, { method: 'POST', body: { username, password } });
       setAuth(state, { token: payload.token, user: payload.user, error: '' });
-      setSocialData(state, payload.social);
-      updateOnlineStatus(state, { onlineCount: payload.social.onlineCount, chatMessages: payload.social.chatMessages });
+      applyServerPayload(payload);
       connectSocialEvents();
       addNotification(state, `${payload.user.username} вошёл в игру.`);
     }
@@ -219,19 +385,19 @@ root.addEventListener('submit', async (event) => {
     if (form.dataset.role === 'friend-form') {
       const input = form.querySelector('input[name="friend_username"]');
       const payload = await api('/api/social/friends/request', { method: 'POST', body: { username: input.value.trim() } });
-      setSocialData(state, payload);
-      updateOnlineStatus(state, { onlineCount: payload.onlineCount, chatMessages: payload.chatMessages });
+      applyServerPayload(payload);
       input.value = '';
     }
 
-    if (form.dataset.role === 'trade-form') {
-      const toUsername = form.querySelector('input[name="trade_user"]').value.trim();
-      const offeredItem = form.querySelector('input[name="offered_item"]').value.trim();
-      const requestedItem = form.querySelector('input[name="requested_item"]').value.trim();
-      const payload = await api('/api/social/trades/create', { method: 'POST', body: { toUsername, offeredItem, requestedItem } });
-      setSocialData(state, payload);
-      updateOnlineStatus(state, { onlineCount: payload.onlineCount, chatMessages: payload.chatMessages });
-      form.reset();
+    if (form.dataset.role === 'dm-form') {
+      const input = form.querySelector('input[name="dm_text"]');
+      const payload = await api('/api/social/messages/send', {
+        method: 'POST',
+        body: { friendId: state.friendModal.friend?.id, text: input.value.trim() }
+      });
+      setFriendMessages(state, payload.messages);
+      setFriendModalMode(state, 'messages');
+      input.value = '';
     }
   } catch (error) {
     setAuth(state, { error: error.message });
@@ -242,8 +408,14 @@ root.addEventListener('submit', async (event) => {
 });
 
 setInterval(() => {
+  if (!state.auth.user) return;
+
   const changed = ensureFreshShop(state);
-  if (state.activeTab === 'shop' || changed) render();
+  const secondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
+  const shouldRenderShopTimer = state.activeTab === 'shop' && secondsLeft !== lastShopSecondsLeft;
+
+  lastShopSecondsLeft = secondsLeft;
+  if (changed || shouldRenderShopTimer) render();
 }, 1000);
 
 window.addEventListener('beforeunload', () => {
