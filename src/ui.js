@@ -726,7 +726,14 @@ export function renderApp(root, state) {
                   <button class="secondary-button inventory-stats-button" data-action="open-stats">Статистика</button>
                 </div>
                 <div class="character-frame">
-                  <div class="character-avatar">🧍</div>
+                  <div class="character-stage">
+                    <div class="character-stage__glow"></div>
+                    <div class="character-avatar">🧍‍♂️</div>
+                    <div class="character-stage__meta">
+                      <span>Персонаж</span>
+                      <strong>Экипировано ${Object.values(state.equipped).filter(Boolean).length}/5</strong>
+                    </div>
+                  </div>
                   <div class="equip-grid">
                     ${Object.entries(slotLabels).map(([slotKey]) => equipTile(slotKey, state.equipped[slotKey])).join('')}
                   </div>

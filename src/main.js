@@ -100,6 +100,7 @@ function animateCaseOpening() {
   const track = root.querySelector('.case-roulette__track');
   if (!track) return;
 
+  updateCaseOpening(state, { offset: targetOffset, spinning: true });
   track.classList.remove('is-spinning');
   track.style.transform = 'translateX(0px)';
 
@@ -111,7 +112,7 @@ function animateCaseOpening() {
   }, 60);
 
   caseRevealTimer = window.setTimeout(() => {
-    updateCaseOpening(state, { offset: targetOffset, reveal: true, spinning: false });
+    updateCaseOpening(state, { reveal: true, spinning: false });
     render();
   }, 4380);
 }
@@ -286,6 +287,7 @@ root.addEventListener('click', async (event) => {
   if (!action || action === 'noop') return;
 
   let shouldSyncGame = false;
+  let preserveAnimatedCaseFrame = false;
 
   try {
     if (action === 'tab') {
@@ -320,6 +322,7 @@ root.addEventListener('click', async (event) => {
         shouldSyncGame = true;
         render();
         animateCaseOpening();
+        preserveAnimatedCaseFrame = true;
       }
     }
     if (action === 'equip') {
@@ -434,8 +437,14 @@ root.addEventListener('click', async (event) => {
       await syncGameState();
     }
   } catch (error) {
+    preserveAnimatedCaseFrame = false;
     setAuth(state, { error: error.message });
     addNotification(state, error.message);
+  }
+
+  if (preserveAnimatedCaseFrame) {
+    saveState(state);
+    return;
   }
 
   render();
@@ -511,8 +520,14 @@ root.addEventListener('submit', async (event) => {
       input.value = '';
     }
   } catch (error) {
+    preserveAnimatedCaseFrame = false;
     setAuth(state, { error: error.message });
     addNotification(state, error.message);
+  }
+
+  if (preserveAnimatedCaseFrame) {
+    saveState(state);
+    return;
   }
 
   render();

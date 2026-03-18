@@ -341,6 +341,51 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
+  return null;
+}
+
+function removeTradeableItem(gameState, instanceId) {
+  const found = findTradeableItem(gameState, instanceId);
+  if (!found) return null;
+  const [removed] = gameState[found.collectionName].splice(found.index, 1);
+  return removed;
+}
+
+function addTradeableItem(gameState, item) {
+  if (!item) return;
+  if (item.category === 'cars') {
+    gameState.ownedCars.push(item);
+    return;
+  }
+  if (item.category === 'property') {
+    gameState.ownedProperty.push(item);
+    return;
+  }
+  gameState.inventory.push(item);
+}
+
+function resetTradeConfirmations(trade) {
+  trade.confirmed = {
+    [trade.fromUserId]: false,
+    [trade.toUserId]: false
+  };
+}
+
+function executeTrade(trade) {
+  const fromUser = db.users.find((user) => user.id === trade.fromUserId);
+  const toUser = db.users.find((user) => user.id === trade.toUserId);
+  if (!fromUser || !toUser) throw new Error('Участники обмена не найдены.');
+
+  const fromGame = ensureUserGameState(fromUser);
+  const toGame = ensureUserGameState(toUser);
+  const fromSelections = (trade.slots?.[trade.fromUserId] || []).filter(Boolean);
+  const toSelections = (trade.slots?.[trade.toUserId] || []).filter(Boolean);
+
+  const fromIds = new Set(fromSelections.map((item) => item.instanceId));
+  const toIds = new Set(toSelections.map((item) => item.instanceId));
+  if (fromIds.size !== fromSelections.length || toIds.size !== toSelections.length) {
+    throw new Error('В трейде обнаружены повторяющиеся предметы.');
+  }
 
   const fromItems = fromSelections.map((item) => findTradeableItem(fromGame, item.instanceId));
   const toItems = toSelections.map((item) => findTradeableItem(toGame, item.instanceId));
