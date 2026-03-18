@@ -341,37 +341,6 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
-
-  const transferredFrom = fromSelections.map((item) => removeTradeableItem(fromGame, item.instanceId));
-  const transferredTo = toSelections.map((item) => removeTradeableItem(toGame, item.instanceId));
-  transferredFrom.forEach((item) => addTradeableItem(toGame, item));
-  transferredTo.forEach((item) => addTradeableItem(fromGame, item));
-
-  trade.status = 'completed';
-  trade.updatedAt = new Date().toISOString();
-}
-
-function hasOpenTrade(userId) {
-  return db.trades.some((trade) => (trade.fromUserId === userId || trade.toUserId === userId) && ['pending', 'active'].includes(trade.status));
-}
-
-function findTrade(tradeId, userId, statuses = ['pending', 'active']) {
-  return db.trades.find((trade) => trade.id === tradeId && (trade.fromUserId === userId || trade.toUserId === userId) && statuses.includes(trade.status));
-}
-
-function getTradeableCollections(gameState) {
-  return [
-    ['inventory', gameState.inventory],
-    ['ownedCars', gameState.ownedCars],
-    ['ownedProperty', gameState.ownedProperty]
-  ];
-}
-
-function findTradeableItem(gameState, instanceId) {
-  for (const [collectionName, collection] of getTradeableCollections(gameState)) {
-    const index = collection.findIndex((item) => item.instanceId === instanceId);
-    if (index !== -1) return { collectionName, index, item: collection[index] };
-  }
   return null;
 }
 
@@ -395,7 +364,7 @@ function addTradeableItem(gameState, item) {
   gameState.inventory.push(item);
 }
 
-function resetTradeConfirmations(trade) {
+function clearTradeConfirmations(trade) {
   trade.confirmed = {
     [trade.fromUserId]: false,
     [trade.toUserId]: false
@@ -433,7 +402,7 @@ function executeTrade(trade) {
   trade.updatedAt = new Date().toISOString();
 }
 
-function hasOpenTrade(userId) {
+function userHasOpenTrade(userId) {
   return db.trades.some((trade) => (trade.fromUserId === userId || trade.toUserId === userId) && ['pending', 'active'].includes(trade.status));
 }
 
@@ -725,7 +694,7 @@ async function handleApi(req, res, pathname) {
       const target = db.users.find((entry) => entry.id === String(payload.toUserId || ''));
       if (!target || target.id === user.id) return sendJson(res, 400, { error: 'Игрок для обмена не найден.' });
       if (!isFriends(user.id, target.id)) return sendJson(res, 400, { error: 'Обмен можно начать только с другом.' });
-      if (hasOpenTrade(user.id) || hasOpenTrade(target.id)) return sendJson(res, 409, { error: 'У одного из игроков уже есть активный или ожидающий трейд.' });
+      if (userHasOpenTrade(user.id) || userHasOpenTrade(target.id)) return sendJson(res, 409, { error: 'У одного из игроков уже есть активный или ожидающий трейд.' });
 
       db.trades.push({
         id: crypto.randomUUID(),
