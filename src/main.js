@@ -179,12 +179,27 @@ function disconnectEvents() {
 
 function connectSocialEvents() {
   disconnectEvents();
+
+  if (typeof EventSource !== 'function') {
+    updateOnlineStatus(state, { status: 'offline' });
+    addNotification(state, 'Онлайн-функции недоступны: браузер не поддерживает EventSource.');
+    render();
+    return;
+  }
+
   updateOnlineStatus(state, { status: 'connecting' });
   render();
 
-  const url = new URL('/events', window.location.origin);
-  if (state.auth.token) url.searchParams.set('token', state.auth.token);
-  events = new EventSource(url);
+  try {
+    const url = new URL('/events', window.location.origin);
+    if (state.auth.token) url.searchParams.set('token', state.auth.token);
+    events = new EventSource(url);
+  } catch (error) {
+    updateOnlineStatus(state, { status: 'offline' });
+    addNotification(state, `Не удалось подключить онлайн: ${error.message}`);
+    render();
+    return;
+  }
 
   events.addEventListener('open', () => {
     updateOnlineStatus(state, { status: 'online' });
@@ -513,9 +528,20 @@ window.addEventListener('beforeunload', () => {
   disconnectEvents();
 });
 
-refreshShop(state);
-state.shopCategory = null;
-state.socialSection = null;
-await restoreSession();
-connectSocialEvents();
-render();
+async function bootstrap() {
+  refreshShop(state);
+  state.shopCategory = null;
+  state.socialSection = null;
+  render();
+
+  try {
+    await restoreSession();
+  } catch (error) {
+    addNotification(state, `Не удалось восстановить сессию: ${error.message}`);
+  }
+
+  connectSocialEvents();
+  render();
+}
+
+bootstrap();
