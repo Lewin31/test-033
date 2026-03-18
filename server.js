@@ -298,6 +298,13 @@ function isFriends(userId, targetId) {
   ));
 }
 
+function isFriends(userId, targetId) {
+  return db.friendRequests.some((request) => (
+    request.status === 'accepted'
+    && ((request.fromUserId === userId && request.toUserId === targetId) || (request.fromUserId === targetId && request.toUserId === userId))
+  ));
+}
+
 function buildFriendProfilePayload(friend) {
   const gameState = ensureUserGameState(friend);
   return {
