@@ -288,6 +288,14 @@ function pushSocialUpdate() {
     if (!user) continue;
     client.res.write(`event: social_data\ndata: ${JSON.stringify(buildClientPayload(user))}\n\n`);
   }
+  gameState.inventory.push(item);
+}
+
+function isFriends(userId, targetId) {
+  return db.friendRequests.some((request) => (
+    request.status === 'accepted'
+    && ((request.fromUserId === userId && request.toUserId === targetId) || (request.fromUserId === targetId && request.toUserId === userId))
+  ));
 }
 
 function isFriends(userId, targetId) {
