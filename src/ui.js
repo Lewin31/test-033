@@ -575,6 +575,114 @@ function friendModal(state) {
   `;
 }
 
+
+function caseOpeningModal(state) {
+  if (!state.caseOpening.open) return '';
+
+  return `
+    <div class="modal visible case-opening-modal">
+      <div class="modal__content case-opening-modal__content">
+        <div class="modal__header">
+          <div>
+            <p class="section-label">Кейс</p>
+            <h3>Прокрутка дропа</h3>
+          </div>
+          <button class="icon-button" data-action="case-close-modal">✕</button>
+        </div>
+        <div class="case-roulette">
+          <div class="case-roulette__pointer"></div>
+          <div class="case-roulette__viewport">
+            <div class="case-roulette__track" style="transform: translateX(-${state.caseOpening.offset}px)">
+              ${state.caseOpening.strip.map((item) => `
+                <div class="case-roulette__card rarity-${item.rarity}">
+                  <span class="gear-icon">${item.icon}</span>
+                  <strong>${item.name}</strong>
+                  ${rarityBadge(item.rarity)}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="case-opening-result ${state.caseOpening.reveal ? 'visible' : ''}">
+          <p class="section-label">Выбито</p>
+          ${state.caseOpening.reward ? collectionTile(state.caseOpening.reward) : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function friendModal(state) {
+  if (!state.friendModal.open || !state.friendModal.friend) return '';
+
+  const friend = state.friendModal.friend;
+  const gameState = state.friendModal.gameState || { equipped: {}, inventory: [], ownedCars: [], ownedProperty: [] };
+  return `
+    <div class="modal visible friend-modal">
+      <div class="modal__content friend-modal__content">
+        <div class="modal__header">
+          <div>
+            <p class="section-label">Друг</p>
+            <h3>${friend.username}</h3>
+          </div>
+          <button class="icon-button" data-action="friend-modal-close">✕</button>
+        </div>
+        <div class="friend-modal__tabs">
+          <button class="tab ${state.friendModal.mode === 'inventory' ? 'active' : ''}" data-action="friend-modal-mode" data-mode="inventory">Инвентарь</button>
+          <button class="tab ${state.friendModal.mode === 'messages' ? 'active' : ''}" data-action="friend-modal-mode" data-mode="messages">Личные сообщения</button>
+        </div>
+        ${state.friendModal.mode === 'inventory' ? `
+          <div class="friend-modal__inventory">
+            <div class="panel-inner">
+              <p class="section-label">Экипировано</p>
+              <div class="collection-grid">
+                ${Object.values(gameState.equipped || {}).filter(Boolean).length
+                  ? Object.values(gameState.equipped || {}).filter(Boolean).map((item) => collectionTile(item)).join('')
+                  : '<div class="empty-state">Ничего не экипировано.</div>'}
+              </div>
+            </div>
+            <div class="panel-inner">
+              <p class="section-label">Рюкзак</p>
+              <div class="collection-grid">
+                ${gameState.inventory?.length ? gameState.inventory.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Рюкзак пуст.</div>'}
+              </div>
+            </div>
+            <div class="panel-inner">
+              <p class="section-label">Гараж</p>
+              <div class="collection-grid">
+                ${gameState.ownedCars?.length ? gameState.ownedCars.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Машин нет.</div>'}
+              </div>
+            </div>
+            <div class="panel-inner">
+              <p class="section-label">Недвижимость</p>
+              <div class="collection-grid">
+                ${gameState.ownedProperty?.length ? gameState.ownedProperty.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Недвижимости нет.</div>'}
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="friend-modal__messages">
+            <div class="chat-feed friend-chat-feed">
+              ${state.friendModal.messages.length
+                ? state.friendModal.messages.map((message) => `
+                  <div class="chat-message ${message.own ? 'chat-message--own' : ''}">
+                    <strong>${message.author?.username || friend.username}</strong>
+                    <span>${message.text}</span>
+                  </div>
+                `).join('')
+                : '<div class="empty-state">Сообщений пока нет.</div>'}
+            </div>
+            <form class="chat-form" data-role="dm-form">
+              <input type="text" name="dm_text" maxlength="240" placeholder="Написать сообщение другу..." />
+              <button type="submit">Отправить</button>
+            </form>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
 function authOverlay(state) {
   if (state.auth.user) return '';
   return `
