@@ -120,7 +120,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
   padding: 18px;
 }
 .compact-panel, .content-panel { min-height: 0; overflow: hidden; }
-.content-panel { display: grid; gap: 16px; align-content: start; }
+.content-panel { display: grid; gap: 16px; align-content: start; min-height: 0; }
 .notifications { display: grid; align-content: start; gap: 10px; }
 .notification {
   padding: 12px;
@@ -223,7 +223,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
   background: #101523;
 }
 .item-tile {
-  min-height: 310px;
+  min-height: 230px;
   border-radius: 24px;
   padding: 14px;
   display: grid;
@@ -290,7 +290,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
   min-height: 0;
   display: grid;
   gap: 16px;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
 }
 .character-frame {
   min-height: 0;
@@ -313,7 +313,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .equip-slot-card {
-  min-height: 132px;
+  min-height: 108px;
   border-radius: 20px;
   padding: 12px;
   display: grid;
@@ -331,11 +331,12 @@ h1 { margin-bottom: 0; font-size: 28px; }
 .equip-slot-card small { color: var(--muted); }
 .inventory-grid {
   display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  align-content: start;
 }
 .inventory-slot {
-  min-height: 178px;
+  min-height: 128px;
   padding: 12px;
   display: grid;
   align-content: space-between;
@@ -353,15 +354,16 @@ h1 { margin-bottom: 0; font-size: 28px; }
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  max-height: 180px;
 }
-.owned-panel { min-height: 0; display: grid; gap: 12px; }
+.owned-panel { min-height: 0; display: grid; gap: 12px; overflow: hidden; }
 .collection-grid {
   display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 }
 .collection-tile {
-  min-height: 150px;
+  min-height: 120px;
   border-radius: 20px;
   padding: 14px;
   display: grid;
@@ -540,4 +542,28 @@ h1 { margin-bottom: 0; font-size: 28px; }
   .auth-grid, .social-columns, .trade-form {
     grid-template-columns: 1fr;
   }
+}
+
+
+.equipment-panel, .backpack-panel {
+  min-height: 0;
+  overflow: auto;
+}
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  background: rgba(5, 8, 13, 0.78);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-overlay__content {
+  width: min(920px, 100%);
+  display: grid;
+  gap: 18px;
+}
+.auth-overlay__text {
+  color: var(--muted);
+  margin-bottom: 0;
 }

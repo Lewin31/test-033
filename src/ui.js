@@ -237,6 +237,24 @@ function renderSocialWindow(state) {
   return chatWindow(state);
 }
 
+
+function authOverlay(state) {
+  if (state.auth.user) return '';
+  return `
+    <div class="auth-overlay">
+      <div class="auth-overlay__content panel-inner">
+        <div>
+          <p class="section-label">Добро пожаловать</p>
+          <h2>Сначала зарегистрируйся или войди</h2>
+          <p class="auth-overlay__text">Это стартовый вход в игру. После авторизации заработают онлайн, чат, трейды и друзья.</p>
+        </div>
+        ${authPanel(state)}
+        ${state.auth.error ? `<div class="auth-error">${state.auth.error}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 export function renderApp(root, state) {
   const stats = getCollectionStats(state);
   const activeOffers = state.shopCategory ? state.shopOffers[state.shopCategory] : [];
@@ -375,8 +393,7 @@ export function renderApp(root, state) {
 
         ${state.activeTab === 'social' ? `
           <section class="panel social-panel content-panel">
-            ${authPanel(state)}
-            ${state.auth.error ? `<div class="auth-error">${state.auth.error}</div>` : ''}
+            ${state.auth.user ? authPanel(state) : ''}
             <div class="shop-header">
               <div>
                 <p class="section-label">Социальное</p>
@@ -399,6 +416,8 @@ export function renderApp(root, state) {
           </section>
         ` : ''}
       </main>
+
+      ${authOverlay(state)}
 
       <div class="modal ${state.showStats ? 'visible' : ''}">
         <div class="modal__content">
