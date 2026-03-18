@@ -1,0 +1,98 @@
+export const rarityMap = {
+  common: { label: 'Обычный', color: '#7f8ea3', glow: 'rgba(127, 142, 163, 0.35)' },
+  uncommon: { label: 'Редкий', color: '#48c774', glow: 'rgba(72, 199, 116, 0.35)' },
+  rare: { label: 'Эпический', color: '#4f7cff', glow: 'rgba(79, 124, 255, 0.35)' },
+  epic: { label: 'Легендарный', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.38)' },
+  mythic: { label: 'Мифический', color: '#ff9f43', glow: 'rgba(255, 159, 67, 0.4)' }
+};
+
+const clothingPrefixes = ['Городская', 'Неоновая', 'Премиальная', 'Уличная', 'Ночная', 'Зимняя', 'Скоростная', 'Клубная', 'Деловая', 'Люксовая'];
+const clothingTypes = ['куртка', 'футболка', 'худи', 'рубашка', 'пальто', 'кепка', 'кроссовки', 'джинсы', 'ботинки', 'часы'];
+const carBrands = ['Lada', 'Toyota', 'BMW', 'Mercedes', 'Audi', 'Honda', 'Nissan', 'Hyundai', 'Porsche', 'Ford'];
+const carModels = ['Spark', 'Nova', 'Pulse', 'Drift', 'Eclipse', 'Titan', 'Falcon', 'Storm', 'Vision', 'Prime'];
+const propertyPrefixes = ['Уютная', 'Современная', 'Элитная', 'Панорамная', 'Загородная', 'Центральная', 'Клубная', 'Семейная', 'Тихая', 'Престижная'];
+const propertyTypes = ['студия', 'квартира', 'дача', 'таунхаус', 'дом', 'пентхаус', 'вилла', 'лофт', 'коттедж', 'резиденция'];
+const rarities = ['common', 'uncommon', 'rare', 'epic', 'mythic'];
+
+function rarityByIndex(index) {
+  if (index % 19 === 0) return 'mythic';
+  if (index % 11 === 0) return 'epic';
+  if (index % 7 === 0) return 'rare';
+  if (index % 3 === 0) return 'uncommon';
+  return 'common';
+}
+
+function priceByRarity(base, rarity) {
+  const multipliers = { common: 1, uncommon: 1.35, rare: 1.8, epic: 2.5, mythic: 3.4 };
+  return Math.round(base * multipliers[rarity]);
+}
+
+export const clothingCatalog = Array.from({ length: 100 }, (_, index) => {
+  const rarity = rarityByIndex(index + 1);
+  const prefix = clothingPrefixes[index % clothingPrefixes.length];
+  const type = clothingTypes[index % clothingTypes.length];
+
+  return {
+    id: `cloth-${index + 1}`,
+    category: 'clothing',
+    name: `${prefix} ${type} ${index + 1}`,
+    rarity,
+    price: priceByRarity(1200 + index * 55, rarity),
+    slot: ['head', 'torso', 'legs', 'feet', 'accessory'][index % 5],
+    stats: {
+      style: 2 + (index % 8),
+      comfort: 1 + (index % 6),
+      incomeBonus: Number((0.01 * ((index % 5) + 1)).toFixed(2))
+    }
+  };
+});
+
+export const carCatalog = Array.from({ length: 50 }, (_, index) => {
+  const rarity = rarityByIndex(index + 5);
+  return {
+    id: `car-${index + 1}`,
+    category: 'cars',
+    name: `${carBrands[index % carBrands.length]} ${carModels[index % carModels.length]} ${index + 1}`,
+    rarity,
+    price: priceByRarity(18000 + index * 3500, rarity),
+    stats: {
+      speed: 120 + index * 4,
+      comfort: 3 + (index % 7),
+      prestige: 2 + (index % 9)
+    }
+  };
+});
+
+export const propertyCatalog = Array.from({ length: 20 }, (_, index) => {
+  const rarity = rarityByIndex(index + 2);
+  return {
+    id: `property-${index + 1}`,
+    category: 'property',
+    name: `${propertyPrefixes[index % propertyPrefixes.length]} ${propertyTypes[index % propertyTypes.length]} ${index + 1}`,
+    rarity,
+    price: priceByRarity(55000 + index * 15000, rarity),
+    stats: {
+      capacity: 2 + index,
+      prestige: 4 + (index % 10),
+      passiveIncome: 120 + index * 35
+    }
+  };
+});
+
+export const catalogs = {
+  clothing: clothingCatalog,
+  cars: carCatalog,
+  property: propertyCatalog
+};
+
+export function getRandomItems(category, count) {
+  const pool = [...catalogs[category]];
+  const result = [];
+
+  while (result.length < count && pool.length) {
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    result.push(pool.splice(randomIndex, 1)[0]);
+  }
+
+  return result;
+}
