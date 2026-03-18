@@ -592,21 +592,8 @@ function friendModal(state) {
   `;
 }
 
-function authOverlay(state) {
-  if (state.auth.user) return '';
-  return `
-    <div class="auth-overlay">
-      <div class="auth-overlay__content panel-inner">
-        <div>
-          <p class="section-label">Добро пожаловать</p>
-          <h2>Сначала зарегистрируйся или войди</h2>
-          <p class="auth-overlay__text">Это стартовый вход в игру. После авторизации заработают онлайн, чат, трейды и друзья.</p>
-        </div>
-        ${authPanel(state)}
-        ${state.auth.error ? `<div class="auth-error">${state.auth.error}</div>` : ''}
-      </div>
-    </div>
-  `;
+function authOverlay() {
+  return '';
 }
 
 export function renderApp(root, state) {
@@ -809,7 +796,7 @@ export function renderApp(root, state) {
 
         ${state.activeTab === 'social' ? `
           <section class="panel social-panel content-panel">
-            ${state.auth.user ? authPanel(state) : ''}
+            ${authPanel(state)}
             <div class="shop-header">
               <div>
                 <p class="section-label">Социальное</p>

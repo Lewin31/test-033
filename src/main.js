@@ -39,13 +39,19 @@ let events;
 let caseRevealTimer;
 let caseSpinTimer;
 let caseAnimationFrame;
+let persistTimer;
 
 const dragState = { active: false, pointerId: null, originX: 0, originY: 0, currentX: 0, currentY: 0, crate: null };
 let lastShopSecondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
 
+function schedulePersist() {
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => saveState(state), 120);
+}
+
 function render() {
   renderApp(root, state);
-  saveState(state);
+  schedulePersist();
 }
 
 async function api(path, { method = 'GET', body } = {}) {
@@ -205,6 +211,12 @@ function disconnectEvents() {
 function connectSocialEvents() {
   disconnectEvents();
 
+  if (!state.auth.token) {
+    updateOnlineStatus(state, { status: 'offline', onlineCount: 0, chatMessages: [] });
+    render();
+    return;
+  }
+
   if (typeof EventSource !== 'function') {
     updateOnlineStatus(state, { status: 'offline' });
     addNotification(state, 'Онлайн-функции недоступны: браузер не поддерживает EventSource.');
@@ -357,7 +369,8 @@ root.addEventListener('click', async (event) => {
       await api('/api/auth/logout', { method: 'POST', body: {} });
       setAuth(state, { token: '', user: null, error: '' });
       resetSocialState(state);
-      connectSocialEvents();
+      disconnectEvents();
+      updateOnlineStatus(state, { status: 'offline', onlineCount: 0, chatMessages: [] });
       addNotification(state, 'Ты вышел из аккаунта.');
     }
     if (action === 'friend-accept' || action === 'friend-decline') {
@@ -580,7 +593,7 @@ async function bootstrap() {
     addNotification(state, `Не удалось восстановить сессию: ${error.message}`);
   }
 
-  connectSocialEvents();
+  if (state.auth.token) connectSocialEvents();
   render();
 }
 
