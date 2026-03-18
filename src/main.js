@@ -2,7 +2,6 @@ import { renderApp } from './ui.js';
 import {
   loadState,
   saveState,
-  performWork,
   restoreEnergy,
   refreshShop,
   ensureFreshShop,
@@ -18,6 +17,10 @@ import {
   addNotification,
   applyGameState,
   extractGameState,
+  openWorkSession,
+  closeWorkSession,
+  setWorkSessionPending,
+  registerWorkDelivery,
   openTradePicker,
   closeTradePicker,
   openFriendModal,
@@ -32,6 +35,9 @@ import {
 const state = loadState();
 const root = document.getElementById('app');
 let events;
+let caseRevealTimer;
+let caseSpinTimer;
+const dragState = { active: false, pointerId: null, originX: 0, originY: 0, currentX: 0, currentY: 0, crate: null };
 let lastShopSecondsLeft = Math.max(0, Math.ceil((state.shopRefreshAt - Date.now()) / 1000));
 
 function render() {
@@ -86,15 +92,76 @@ function animateCaseOpening() {
   const viewportCenterOffset = 320;
   const targetOffset = rewardIndex * cardWidth - viewportCenterOffset;
 
-  requestAnimationFrame(() => {
-    updateCaseOpening(state, { offset: targetOffset });
-    render();
-  });
+  clearTimeout(caseSpinTimer);
+  clearTimeout(caseRevealTimer);
+  updateCaseOpening(state, { offset: 0, reveal: false, spinning: false });
+  render();
 
-  setTimeout(() => {
+  caseSpinTimer = window.setTimeout(() => {
+    requestAnimationFrame(() => {
+      updateCaseOpening(state, { offset: targetOffset, spinning: true });
+      render();
+    });
+  }, 80);
+
+  caseRevealTimer = window.setTimeout(() => {
     updateCaseOpening(state, { reveal: true });
     render();
-  }, 4200);
+  }, 4380);
+}
+
+async function handleWorkDelivery() {
+  if (state.workSession.pendingDrop) return;
+
+  setWorkSessionPending(state, true);
+  const income = registerWorkDelivery(state);
+  if (!income) {
+    setWorkSessionPending(state, false);
+    render();
+    return;
+  }
+
+  render();
+  try {
+    await syncGameState();
+  } catch (error) {
+    setAuth(state, { error: error.message });
+    addNotification(state, error.message);
+  }
+  render();
+}
+
+function resetDraggedCrate() {
+  if (!dragState.crate) return;
+  dragState.crate.classList.remove('dragging');
+  dragState.crate.style.removeProperty('--drag-x');
+  dragState.crate.style.removeProperty('--drag-y');
+  dragState.crate = null;
+  dragState.active = false;
+  dragState.pointerId = null;
+}
+
+function releaseDraggedCrate(event) {
+  if (!dragState.active || dragState.pointerId !== event.pointerId) return;
+
+  const dropZone = root.querySelector('[data-work-dropzone="target"]');
+  const releasedCrate = dragState.crate;
+  const clientX = event.clientX;
+  const clientY = event.clientY;
+  const droppedInside = Boolean(dropZone) && (() => {
+    const rect = dropZone.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  })();
+
+  if (releasedCrate?.hasPointerCapture?.(event.pointerId)) {
+    releasedCrate.releasePointerCapture(event.pointerId);
+  }
+
+  resetDraggedCrate();
+
+  if (droppedInside) {
+    handleWorkDelivery();
+  }
 }
 
 async function syncGameState() {
@@ -218,13 +285,10 @@ root.addEventListener('click', async (event) => {
     if (action === 'friend-modal-close') closeFriendModal(state);
     if (action === 'friend-modal-mode') setFriendModalMode(state, button.dataset.mode);
     if (action === 'case-close-modal') closeCaseOpening(state);
-    if (action === 'work') {
-      performWork(state);
-      shouldSyncGame = true;
-    }
+    if (action === 'work-open') openWorkSession(state);
+    if (action === 'work-close') closeWorkSession(state);
     if (action === 'rest') {
-      restoreEnergy(state);
-      shouldSyncGame = true;
+      shouldSyncGame = restoreEnergy(state) || shouldSyncGame;
     }
     if (action === 'buy') {
       shouldSyncGame = buyItem(state, button.dataset.id, button.dataset.category) || shouldSyncGame;
@@ -355,6 +419,32 @@ root.addEventListener('click', async (event) => {
 
   render();
 });
+
+root.addEventListener('pointerdown', (event) => {
+  const crate = event.target.closest('[data-work-crate]');
+  if (!crate || !state.workSession.open || state.workSession.pendingDrop) return;
+
+  dragState.active = true;
+  dragState.pointerId = event.pointerId;
+  dragState.originX = event.clientX;
+  dragState.originY = event.clientY;
+  dragState.currentX = 0;
+  dragState.currentY = 0;
+  dragState.crate = crate;
+  crate.classList.add('dragging');
+  crate.setPointerCapture(event.pointerId);
+});
+
+root.addEventListener('pointermove', (event) => {
+  if (!dragState.active || dragState.pointerId !== event.pointerId || !dragState.crate) return;
+  dragState.currentX = event.clientX - dragState.originX;
+  dragState.currentY = event.clientY - dragState.originY;
+  dragState.crate.style.setProperty('--drag-x', `${dragState.currentX}px`);
+  dragState.crate.style.setProperty('--drag-y', `${dragState.currentY}px`);
+});
+
+root.addEventListener('pointerup', releaseDraggedCrate);
+root.addEventListener('pointercancel', releaseDraggedCrate);
 
 root.addEventListener('submit', async (event) => {
   const form = event.target.closest('form');

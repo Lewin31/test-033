@@ -62,13 +62,20 @@ const defaultState = {
     gameState: null,
     messages: []
   },
+  workSession: {
+    open: false,
+    deliveredThisShift: 0,
+    shiftEarnings: 0,
+    pendingDrop: false
+  },
   caseOpening: {
     open: false,
     caseId: '',
     reward: null,
     strip: [],
     offset: 0,
-    reveal: false
+    reveal: false,
+    spinning: false
   },
   tradePicker: {
     slotIndex: null
@@ -110,6 +117,7 @@ function normalizeSavedState(saved = {}) {
     socialSection: null,
     tradeModalOpen: false,
     friendModal: structuredClone(defaultState).friendModal,
+    workSession: structuredClone(defaultState).workSession,
     caseOpening: structuredClone(defaultState).caseOpening,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: structuredClone(defaultState).online,
@@ -135,6 +143,7 @@ export function saveState(state) {
     socialSection: null,
     tradeModalOpen: false,
     friendModal: structuredClone(defaultState).friendModal,
+    workSession: structuredClone(defaultState).workSession,
     caseOpening: structuredClone(defaultState).caseOpening,
     tradePicker: structuredClone(defaultState).tradePicker,
     online: undefined,
@@ -188,7 +197,7 @@ export function getIncomeMultiplier(state) {
 export function performWork(state) {
   if (state.energy <= 0) {
     addNotification(state, 'Нужен отдых: энергия на нуле.');
-    return;
+    return 0;
   }
 
   state.workClicks += 1;
@@ -203,11 +212,14 @@ export function performWork(state) {
   } else {
     addNotification(state, `Работа выполнена. +$${income}.`);
   }
+
+  return income;
 }
 
 export function restoreEnergy(state) {
   state.energy = 100;
   addNotification(state, 'Энергия восстановлена. Можно снова работать.');
+  return true;
 }
 
 export function ensureFreshShop(state) {
@@ -256,7 +268,8 @@ export function openCase(state, caseId) {
     reward,
     strip,
     offset: 0,
-    reveal: false
+    reveal: false,
+    spinning: false
   };
   addNotification(state, `${caseItem.name}: тебе выпала ${reward.name}.`);
   return reward;
@@ -345,6 +358,36 @@ export function openTradePicker(state, slotIndex) {
 
 export function closeTradePicker(state) {
   state.tradePicker.slotIndex = null;
+}
+
+export function openWorkSession(state) {
+  state.workSession = {
+    open: true,
+    deliveredThisShift: 0,
+    shiftEarnings: 0,
+    pendingDrop: false
+  };
+}
+
+export function closeWorkSession(state) {
+  state.workSession = {
+    ...structuredClone(defaultState).workSession,
+    open: false
+  };
+}
+
+export function setWorkSessionPending(state, pending) {
+  state.workSession.pendingDrop = Boolean(pending);
+}
+
+export function registerWorkDelivery(state) {
+  const income = performWork(state);
+  if (!income) return 0;
+
+  state.workSession.deliveredThisShift += 1;
+  state.workSession.shiftEarnings += income;
+  state.workSession.pendingDrop = false;
+  return income;
 }
 
 export function getTradeableItems(state) {
