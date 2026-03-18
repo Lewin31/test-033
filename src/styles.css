@@ -296,7 +296,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
 .character-frame {
   min-height: 0;
   display: grid;
-  gap: 16px;
+  gap: 12px;
   grid-template-rows: auto 1fr;
 }
 .character-stage {
@@ -356,8 +356,8 @@ h1 { margin-bottom: 0; font-size: 28px; }
 }
 .equip-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  grid-template-columns: 1fr;
 }
 .equip-slot-card {
   min-height: 92px;
