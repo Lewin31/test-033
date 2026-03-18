@@ -10,6 +10,7 @@ const defaultState = {
   energy: 100,
   activeTab: 'shop',
   shopCategory: null,
+  socialSection: null,
   inventory: [],
   ownedCars: [],
   ownedProperty: [],
@@ -25,6 +26,11 @@ const defaultState = {
     cars: getRandomItems('cars', 5),
     property: getRandomItems('property', 5)
   },
+  online: {
+    status: 'connecting',
+    onlineCount: 0,
+    chatMessages: []
+  },
   shopRefreshAt: Date.now() + 30000,
   showStats: false,
   notifications: ['Добро пожаловать в Life Sim! Начни с работы и первой покупки.']
@@ -38,6 +44,8 @@ export function loadState() {
     return {
       ...structuredClone(defaultState),
       ...saved,
+      socialSection: null,
+      online: structuredClone(defaultState).online,
       equipped: { ...structuredClone(defaultState).equipped, ...(saved.equipped || {}) },
       shopOffers: { ...structuredClone(defaultState).shopOffers, ...(saved.shopOffers || {}) }
     };
@@ -47,7 +55,12 @@ export function loadState() {
 }
 
 export function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const persistedState = {
+    ...state,
+    socialSection: null,
+    online: undefined
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
 }
 
 export function addNotification(state, message) {
@@ -116,36 +129,57 @@ export function buyItem(state, itemId, category) {
 
   state.money -= offer.price;
 
-  if (category === 'clothing') {
-    state.inventory.push(offer);
-  }
-  if (category === 'cars') {
-    state.ownedCars.push(offer);
-  }
-  if (category === 'property') {
-    state.ownedProperty.push(offer);
-  }
+  if (category === 'clothing') state.inventory.push(offer);
+  if (category === 'cars') state.ownedCars.push(offer);
+  if (category === 'property') state.ownedProperty.push(offer);
 
   state.shopOffers[category] = state.shopOffers[category].filter((item) => item.id !== itemId);
   addNotification(state, `${offer.name} теперь твой.`);
 }
 
 export function equipItem(state, itemId) {
-  const item = state.inventory.find((entry) => entry.id === itemId);
-  if (!item) return;
+  const itemIndex = state.inventory.findIndex((entry) => entry.id === itemId);
+  if (itemIndex === -1) return;
+
+  const [item] = state.inventory.splice(itemIndex, 1);
+  const previousItem = state.equipped[item.slot];
+
+  if (previousItem) state.inventory.unshift(previousItem);
+
   state.equipped[item.slot] = item;
   addNotification(state, `${item.name} экипирован.`);
 }
 
+export function unequipItem(state, slotKey) {
+  const equippedItem = state.equipped[slotKey];
+  if (!equippedItem) return;
+
+  state.inventory.unshift(equippedItem);
+  state.equipped[slotKey] = null;
+  addNotification(state, `${equippedItem.name} снят.`);
+}
+
+export function updateOnlineStatus(state, patch) {
+  state.online = {
+    ...state.online,
+    ...patch,
+    chatMessages: patch.chatMessages ?? state.online.chatMessages
+  };
+}
+
+export function appendChatMessage(state, message) {
+  state.online.chatMessages = [...state.online.chatMessages.slice(-19), message];
+}
+
 export function getCollectionStats(state) {
-  const allItems = [...state.inventory, ...state.ownedCars, ...state.ownedProperty];
+  const allItems = [...state.inventory, ...Object.values(state.equipped).filter(Boolean), ...state.ownedCars, ...state.ownedProperty];
   const raritySummary = allItems.reduce((acc, item) => {
     acc[item.rarity] = (acc[item.rarity] || 0) + 1;
     return acc;
   }, {});
 
   return {
-    wardrobe: state.inventory.length,
+    wardrobe: state.inventory.length + Object.values(state.equipped).filter(Boolean).length,
     cars: state.ownedCars.length,
     property: state.ownedProperty.length,
     raritySummary,

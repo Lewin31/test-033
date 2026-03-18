@@ -22,8 +22,10 @@ body {
     var(--bg);
   color: var(--text);
 }
-button {
+button, input {
   font: inherit;
+}
+button {
   border: 0;
   cursor: pointer;
 }
@@ -32,7 +34,7 @@ button {
   height: 100vh;
   padding: 18px;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto 1fr;
   gap: 16px;
 }
 
@@ -43,10 +45,10 @@ button {
 }
 
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
   padding: 14px 20px;
   border-radius: 22px;
 }
@@ -63,15 +65,14 @@ h1, h2, h3, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: 28px; }
 .tabs {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  justify-content: center;
   flex-wrap: wrap;
 }
-
-.tab, .secondary-button, .primary-button, .icon-button, .inventory-slot, .store-card {
+.tab, .secondary-button, .primary-button, .icon-button, .inventory-slot, .store-card, .equip-slot-card {
   border-radius: 16px;
   transition: 0.2s ease;
 }
-
 .tab {
   padding: 12px 18px;
   background: #0f1320;
@@ -83,75 +84,53 @@ h1 { margin-bottom: 0; font-size: 28px; }
   color: white;
   box-shadow: 0 14px 30px rgba(111, 107, 255, 0.35);
 }
-
-.money-panel {
-  padding: 10px 14px;
-  border-radius: 18px;
+.topbar-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.top-chip {
+  min-width: 92px;
+  padding: 10px 12px;
+  border-radius: 16px;
   background: linear-gradient(135deg, rgba(50, 210, 150, 0.15), rgba(111, 107, 255, 0.1));
-  border: 1px solid rgba(50, 210, 150, 0.25);
+  border: 1px solid rgba(50, 210, 150, 0.2);
   display: grid;
   gap: 2px;
-  text-align: right;
 }
-.money-panel span {
-  color: var(--accent-2);
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.profile-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  border-radius: 22px;
-}
-.profile-strip__main {
-  display: grid;
-  gap: 4px;
-}
-.profile-strip__main small {
+.top-chip span {
   color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
 }
-.profile-strip__stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(90px, 1fr));
-  gap: 10px;
-  min-width: 340px;
-}
-.compact {
-  padding: 12px;
-  border-radius: 16px;
-}
-.compact strong {
-  font-size: 18px;
-}
+.top-chip strong { font-size: 18px; }
+.top-chip.online.online { border-color: rgba(50, 210, 150, 0.55); }
+.top-chip.online.offline { border-color: rgba(255, 99, 132, 0.45); }
+.top-chip.online.connecting { border-color: rgba(255, 190, 92, 0.45); }
 
 .layout {
   min-height: 0;
   display: grid;
   gap: 16px;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 260px minmax(0, 1fr);
 }
-
 .panel, .panel-inner {
   border-radius: 24px;
   padding: 18px;
 }
 .compact-panel, .content-panel { min-height: 0; overflow: hidden; }
-.content-panel { display: grid; gap: 16px; }
-.notifications { align-content: start; }
+.content-panel { display: grid; gap: 16px; align-content: start; }
+.notifications { display: grid; align-content: start; gap: 10px; }
 .notification {
   padding: 12px;
   background: #101523;
   border: 1px solid var(--line);
   border-radius: 16px;
   color: #cfd8ec;
-  margin-top: 10px;
 }
 
-.hero-stats, .work-summary, .modal-grid {
+.work-summary, .modal-grid, .social-info-grid {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -171,7 +150,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
   padding: 22px;
   border: 1px solid rgba(111, 107, 255, 0.25);
 }
-.work-actions, .shop-header, .inventory-header, .modal__header, .shop-showcase__header, .equipment-panel__header {
+.work-actions, .shop-header, .inventory-header, .modal__header, .shop-showcase__header, .equipment-panel__header, .social-window__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -183,13 +162,13 @@ h1 { margin-bottom: 0; font-size: 28px; }
   color: white;
   box-shadow: 0 14px 30px rgba(111, 107, 255, 0.35);
 }
-.secondary-button, .icon-button {
+.secondary-button, .icon-button, .chat-form button {
   padding: 12px 16px;
   background: #0f1320;
   color: white;
   border: 1px solid var(--line);
 }
-.primary-button:hover, .secondary-button:hover, .tab:hover, .inventory-slot:hover, .store-card:hover {
+.primary-button:hover, .secondary-button:hover, .tab:hover, .inventory-slot:hover, .store-card:hover, .equip-slot-card:hover {
   transform: translateY(-2px);
 }
 
@@ -206,47 +185,45 @@ h1 { margin-bottom: 0; font-size: 28px; }
   display: grid;
   gap: 8px;
   text-align: center;
-  min-height: 120px;
+  min-height: 110px;
   align-content: center;
 }
 .store-card.active {
   border-color: rgba(111, 107, 255, 0.55);
   box-shadow: 0 0 0 1px rgba(111, 107, 255, 0.35), 0 18px 45px rgba(111, 107, 255, 0.18);
 }
-.store-card__icon {
-  font-size: 34px;
-}
-.refresh-box span, .shop-placeholder span {
-  color: var(--muted);
-}
-.shop-window, .shop-placeholder {
+.store-card__icon { font-size: 34px; }
+.refresh-box span { color: var(--muted); }
+.shop-window, .social-window, .social-placeholder {
   min-height: 0;
   display: grid;
   gap: 16px;
+  grid-template-rows: auto 1fr auto;
 }
-.shop-placeholder {
-  place-items: center;
-  text-align: center;
-}
+.empty-window { background: transparent; border-style: dashed; }
 
-.square-grid {
+.shop-grid {
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(210px, 1fr);
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  padding-bottom: 6px;
 }
-.shop-grid, .inventory-grid, .collection-grid {
+.inventory-grid, .collection-grid, .chat-feed {
   min-height: 0;
   overflow: auto;
-  padding-right: 4px;
 }
-.item-tile, .inventory-slot, .collection-tile, .equip-rpg-slot {
+.item-tile, .inventory-slot, .collection-tile, .equip-slot-card {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
   background: #101523;
 }
 .item-tile {
-  aspect-ratio: 1 / 1;
+  min-height: 310px;
   border-radius: 24px;
   padding: 14px;
   display: grid;
@@ -292,10 +269,7 @@ h1 { margin-bottom: 0; font-size: 28px; }
   color: white;
   border-radius: 14px;
 }
-.price {
-  color: var(--accent-2);
-  font-size: 24px;
-}
+.price { color: var(--accent-2); font-size: 24px; }
 
 .rarity-badge {
   padding: 8px 12px;
@@ -312,47 +286,56 @@ h1 { margin-bottom: 0; font-size: 28px; }
 .rarity-epic { box-shadow: inset 0 0 0 1px rgba(168,85,247,0.35), 0 0 32px rgba(168,85,247,0.12); }
 .rarity-mythic { box-shadow: inset 0 0 0 1px rgba(255,159,67,0.35), 0 0 36px rgba(255,159,67,0.14); }
 
-.inventory-rpg-layout {
+.inventory-main-grid {
   min-height: 0;
   display: grid;
-  gap: 18px;
-  grid-template-columns: minmax(300px, 390px) 1fr;
+  gap: 16px;
+  grid-template-columns: 340px minmax(0, 1fr);
 }
 .character-frame {
+  min-height: 0;
   display: grid;
   gap: 16px;
-  align-items: start;
+  grid-template-rows: auto 1fr;
 }
 .character-avatar {
-  min-height: 140px;
+  min-height: 130px;
   display: grid;
   place-items: center;
   border-radius: 24px;
   background: radial-gradient(circle at top, rgba(111, 107, 255, 0.35), rgba(255,255,255,0.03));
   border: 1px solid rgba(111, 107, 255, 0.2);
-  font-size: 78px;
+  font-size: 74px;
 }
-.equip-rpg-grid {
+.equip-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.equip-rpg-slot {
-  min-height: 118px;
+.equip-slot-card {
+  min-height: 132px;
   border-radius: 20px;
   padding: 12px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-content: start;
+  text-align: left;
+  color: white;
 }
-.equip-rpg-slot__label {
+.equip-slot-card__label {
   color: var(--muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
+.equip-slot-card small { color: var(--muted); }
+.inventory-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
 .inventory-slot {
-  aspect-ratio: 1 / 1;
+  min-height: 178px;
   padding: 12px;
   display: grid;
   align-content: space-between;
@@ -369,20 +352,47 @@ h1 { margin-bottom: 0; font-size: 28px; }
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
+.owned-panel { min-height: 0; display: grid; gap: 12px; }
 .collection-grid {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 .collection-tile {
-  min-height: 160px;
+  min-height: 150px;
   border-radius: 20px;
   padding: 14px;
   display: grid;
   align-content: start;
   gap: 10px;
+}
+
+.chat-feed {
+  display: grid;
+  gap: 10px;
+  padding-right: 4px;
+}
+.chat-message {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #101523;
+  display: grid;
+  gap: 6px;
+}
+.chat-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+.chat-form input {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #0f1320;
+  color: white;
+  padding: 12px 14px;
 }
 
 .empty-state {
@@ -430,20 +440,19 @@ h1 { margin-bottom: 0; font-size: 28px; }
   border: 1px solid var(--line);
 }
 
-@media (max-width: 1200px) {
-  .layout { grid-template-columns: 1fr; }
-  .profile-strip { flex-direction: column; align-items: stretch; }
-  .profile-strip__stats { min-width: 0; }
-}
-
-@media (max-width: 960px) {
-  .inventory-rpg-layout, .owned-sections, .shop-selector { grid-template-columns: 1fr; }
+@media (max-width: 1300px) {
+  .topbar { grid-template-columns: 1fr; }
+  .layout, .inventory-main-grid, .owned-sections, .shop-selector, .social-selector { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 780px) {
   html, body { overflow: auto; }
   .shell { height: auto; }
-  .topbar, .shop-header, .inventory-header, .work-actions, .modal__header, .shop-showcase__header, .equipment-panel__header { flex-direction: column; align-items: stretch; }
-  .money-panel { text-align: left; }
-  .equip-rpg-grid, .profile-strip__stats { grid-template-columns: 1fr; }
+  .work-actions, .shop-header, .inventory-header, .modal__header, .shop-showcase__header, .equipment-panel__header, .social-window__header, .chat-form {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .shop-grid { grid-auto-columns: minmax(240px, 1fr); }
+  .equip-grid { grid-template-columns: 1fr; }
 }

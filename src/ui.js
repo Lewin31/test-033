@@ -17,6 +17,12 @@ const slotIcons = {
   accessory: '⌚'
 };
 
+const socialMeta = {
+  friends: { label: 'Друзья', icon: '🫂' },
+  trade: { label: 'Обмен', icon: '🤝' },
+  chat: { label: 'Чат', icon: '💬' }
+};
+
 function formatMoney(value) {
   return new Intl.NumberFormat('ru-RU').format(value);
 }
@@ -77,10 +83,77 @@ function collectionTile(item) {
 
 function equipTile(slotKey, item) {
   return `
-    <div class="equip-rpg-slot ${item ? `rarity-${item.rarity}` : ''}">
-      <span class="equip-rpg-slot__label">${slotLabels[slotKey]}</span>
+    <button class="equip-slot-card ${item ? `rarity-${item.rarity}` : ''}" data-action="${item ? 'unequip' : 'noop'}" data-slot="${slotKey}">
+      <span class="equip-slot-card__label">${slotLabels[slotKey]}</span>
       <span class="gear-icon">${itemIcon(item, slotKey)}</span>
       <strong>${item?.name || 'Пусто'}</strong>
+      ${item ? '<small>Нажми, чтобы снять</small>' : ''}
+    </button>
+  `;
+}
+
+function renderSocialWindow(state) {
+  if (!state.socialSection) return '<div class="social-placeholder panel-inner"></div>';
+
+  if (state.socialSection === 'friends') {
+    return `
+      <div class="social-window panel-inner">
+        <div class="social-window__header">
+          <div>
+            <p class="section-label">🫂 Друзья</p>
+            <h3>Сетевая основа уже готова</h3>
+          </div>
+          <button class="secondary-button" data-action="close-social">Закрыть</button>
+        </div>
+        <div class="social-info-grid">
+          <div class="mini-card"><span>Статус</span><strong>${state.online.status}</strong></div>
+          <div class="mini-card"><span>Онлайн</span><strong>${state.online.onlineCount}</strong></div>
+          <div class="mini-card"><span>Railway</span><strong>WS Ready</strong></div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (state.socialSection === 'trade') {
+    return `
+      <div class="social-window panel-inner">
+        <div class="social-window__header">
+          <div>
+            <p class="section-label">🤝 Обмен</p>
+            <h3>Заготовка под онлайн-обмен</h3>
+          </div>
+          <button class="secondary-button" data-action="close-social">Закрыть</button>
+        </div>
+        <div class="social-info-grid">
+          <div class="mini-card"><span>Подключение</span><strong>${state.online.status}</strong></div>
+          <div class="mini-card"><span>Игроков</span><strong>${state.online.onlineCount}</strong></div>
+          <div class="mini-card"><span>Следующий шаг</span><strong>Trade API</strong></div>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="social-window panel-inner">
+      <div class="social-window__header">
+        <div>
+          <p class="section-label">💬 Чат</p>
+          <h3>Глобальный чат</h3>
+        </div>
+        <button class="secondary-button" data-action="close-social">Закрыть</button>
+      </div>
+      <div class="chat-feed">
+        ${(state.online.chatMessages.length ? state.online.chatMessages : [{ author: 'Система', text: 'Чат готов. Напиши первое сообщение.' }]).map((message) => `
+          <div class="chat-message">
+            <strong>${message.author}</strong>
+            <span>${message.text}</span>
+          </div>
+        `).join('')}
+      </div>
+      <form class="chat-form" data-role="chat-form">
+        <input type="text" name="message" maxlength="180" placeholder="Написать в чат..." />
+        <button type="submit">Отправить</button>
+      </form>
     </div>
   `;
 }
@@ -99,32 +172,21 @@ export function renderApp(root, state) {
           <h1>Симулятор жизни</h1>
         </div>
         <nav class="tabs">
-          ${['work', 'shop', 'inventory'].map((tab) => `
+          ${['work', 'shop', 'inventory', 'social'].map((tab) => `
             <button class="tab ${state.activeTab === tab ? 'active' : ''}" data-action="tab" data-tab="${tab}">
-              ${tab === 'work' ? 'Работа' : tab === 'shop' ? 'Магазин' : 'Инвентарь'}
+              ${tab === 'work' ? 'Работа' : tab === 'shop' ? 'Магазин' : tab === 'inventory' ? 'Инвентарь' : 'Социальное'}
             </button>
           `).join('')}
         </nav>
-        <div class="money-panel">
-          <span>$${formatMoney(state.money)}</span>
-          <small>LVL ${state.level}</small>
+        <div class="topbar-stats">
+          <div class="top-chip"><span>$</span><strong>${formatMoney(state.money)}</strong></div>
+          <div class="top-chip"><span>LVL</span><strong>${state.level}</strong></div>
+          <div class="top-chip"><span>ENG</span><strong>${state.energy}%</strong></div>
+          <div class="top-chip online ${state.online.status}"><span>ONLINE</span><strong>${state.online.onlineCount}</strong></div>
         </div>
       </header>
 
-      <section class="profile-strip panel">
-        <div class="profile-strip__main">
-          <p class="section-label">Профиль</p>
-          <strong>Игрок</strong>
-          <small>Опыт ${state.exp} • Энергия ${state.energy}% • Клики ${state.workClicks}</small>
-        </div>
-        <div class="profile-strip__stats">
-          <div class="mini-card compact"><span>Уровень</span><strong>${state.level}</strong></div>
-          <div class="mini-card compact"><span>Одежда</span><strong>${stats.wardrobe}</strong></div>
-          <div class="mini-card compact"><span>Машины</span><strong>${stats.cars}</strong></div>
-        </div>
-      </section>
-
-      <main class="layout">
+      <main class="layout ${state.activeTab === 'inventory' ? 'inventory-layout-mode' : ''}">
         <aside class="panel notifications compact-panel">
           <p class="section-label">Лента</p>
           ${state.notifications.map((message) => `<div class="notification">${message}</div>`).join('')}
@@ -179,21 +241,17 @@ export function renderApp(root, state) {
                   </div>
                   <button class="secondary-button" data-action="close-shop">Закрыть</button>
                 </div>
-                <div class="shop-grid square-grid">
+                <div class="shop-grid">
                   ${activeOffers.map((item) => shopCard(item)).join('')}
                 </div>
               </div>
-            ` : `
-              <div class="shop-placeholder panel-inner">
-                <span>Нажми на одну из 3 кнопок выше, чтобы открыть магазин.</span>
-              </div>
-            `}
+            ` : '<div class="shop-window panel-inner empty-window"></div>'}
           </section>
         ` : ''}
 
         ${state.activeTab === 'inventory' ? `
           <section class="panel inventory-panel content-panel">
-            <div class="inventory-rpg-layout">
+            <div class="inventory-main-grid">
               <div class="equipment-panel panel-inner">
                 <div class="equipment-panel__header">
                   <div>
@@ -204,7 +262,7 @@ export function renderApp(root, state) {
                 </div>
                 <div class="character-frame">
                   <div class="character-avatar">🧍</div>
-                  <div class="equip-rpg-grid">
+                  <div class="equip-grid">
                     ${Object.entries(slotLabels).map(([slotKey]) => equipTile(slotKey, state.equipped[slotKey])).join('')}
                   </div>
                 </div>
@@ -217,28 +275,52 @@ export function renderApp(root, state) {
                     <h2>Предметы</h2>
                   </div>
                 </div>
-                <div class="inventory-grid square-grid">
+                <div class="inventory-grid">
                   ${state.inventory.length
                     ? state.inventory.map((item) => inventoryTile(item)).join('')
-                    : '<div class="empty-state">Пока пусто. Купи одежду в магазине.</div>'}
+                    : '<div class="empty-state">Рюкзак пуст.</div>'}
                 </div>
               </div>
             </div>
 
             <div class="owned-sections">
-              <div class="panel-inner">
+              <div class="panel-inner owned-panel">
                 <p class="section-label">🚗 Гараж</p>
                 <div class="collection-grid">
                   ${state.ownedCars.length ? state.ownedCars.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Пока нет машин.</div>'}
                 </div>
               </div>
-              <div class="panel-inner">
+              <div class="panel-inner owned-panel">
                 <p class="section-label">🏠 Недвижимость</p>
                 <div class="collection-grid">
                   ${state.ownedProperty.length ? state.ownedProperty.map((item) => collectionTile(item)).join('') : '<div class="empty-state">Пока нет недвижимости.</div>'}
                 </div>
               </div>
             </div>
+          </section>
+        ` : ''}
+
+        ${state.activeTab === 'social' ? `
+          <section class="panel social-panel content-panel">
+            <div class="shop-header">
+              <div>
+                <p class="section-label">Социальное</p>
+                <h2>База для онлайна на Railway</h2>
+              </div>
+              <div class="refresh-box">
+                <span>Статус сокета</span>
+                <strong>${state.online.status}</strong>
+              </div>
+            </div>
+            <div class="shop-selector social-selector">
+              ${Object.entries(socialMeta).map(([key, meta]) => `
+                <button class="store-card ${state.socialSection === key ? 'active' : ''}" data-action="social-section" data-section="${key}">
+                  <span class="store-card__icon">${meta.icon}</span>
+                  <strong>${meta.label}</strong>
+                </button>
+              `).join('')}
+            </div>
+            ${renderSocialWindow(state)}
           </section>
         ` : ''}
       </main>
