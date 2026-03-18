@@ -341,26 +341,6 @@ data: ${JSON.stringify(payload)}
   for (const client of sseClients) {
     if (targets.has(client.userId)) client.res.write(chunk);
   }
-  return null;
-}
-
-function removeTradeableItem(gameState, instanceId) {
-  const found = findTradeableItem(gameState, instanceId);
-  if (!found) return null;
-  const [removed] = gameState[found.collectionName].splice(found.index, 1);
-  return removed;
-}
-
-function addTradeableItem(gameState, item) {
-  if (!item) return;
-  if (item.category === 'cars') {
-    gameState.ownedCars.push(item);
-    return;
-  }
-  if (item.category === 'property') {
-    gameState.ownedProperty.push(item);
-    return;
-  }
   gameState.inventory.push(item);
 }
 
@@ -426,7 +406,7 @@ function findTradeableItem(gameState, instanceId) {
   return null;
 }
 
-function removeTradeableItem(gameState, instanceId) {
+function takeTradeableItem(gameState, instanceId) {
   const found = findTradeableItem(gameState, instanceId);
   if (!found) return null;
   const [removed] = gameState[found.collectionName].splice(found.index, 1);
@@ -475,8 +455,8 @@ function executeTrade(trade) {
     throw new Error('Один из предметов для обмена больше недоступен.');
   }
 
-  const transferredFrom = fromSelections.map((item) => removeTradeableItem(fromGame, item.instanceId));
-  const transferredTo = toSelections.map((item) => removeTradeableItem(toGame, item.instanceId));
+  const transferredFrom = fromSelections.map((item) => takeTradeableItem(fromGame, item.instanceId));
+  const transferredTo = toSelections.map((item) => takeTradeableItem(toGame, item.instanceId));
   transferredFrom.forEach((item) => addTradeableItem(toGame, item));
   transferredTo.forEach((item) => addTradeableItem(fromGame, item));
 
